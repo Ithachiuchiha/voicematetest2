@@ -27,8 +27,6 @@ export function useVoiceRecognition({
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const shouldRestartRef = useRef(false);
-  const retryCountRef = useRef(0);
-  const maxRetries = 3;
 
   // Check if speech recognition is supported
   const isSupported = typeof window !== 'undefined' && 
@@ -40,8 +38,14 @@ export function useVoiceRecognition({
       return;
     }
 
+    // Stop any existing recognition
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (e) {
+        console.log('Stopping existing recognition');
+      }
     }
 
     try {
@@ -56,16 +60,13 @@ export function useVoiceRecognition({
       recognition.interimResults = interimResults;
       recognition.lang = lang;
       recognition.maxAlternatives = 1;
-      
-      // Don't set grammars - it causes issues in some browsers
 
       recognition.onstart = () => {
         setIsListening(true);
         setError(null);
-        retryCountRef.current = 0; // Reset retry count on successful start
       };
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
+      recognition.onresult = (event: any) => {
         let finalTranscript = '';
         let interimTranscript = '';
         
@@ -78,43 +79,25 @@ export function useVoiceRecognition({
           }
         }
         
-        // Always update with latest transcript (final or interim)
         const currentTranscript = finalTranscript || interimTranscript;
         if (currentTranscript) {
           onResult(currentTranscript.trim());
         }
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         
-        // Handle different error types appropriately
+        // Handle different types of errors
         if (event.error === 'no-speech' && shouldRestartRef.current) {
-          // No speech detected - restart silently
-          setTimeout(() => {
-            if (shouldRestartRef.current && recognitionRef.current) {
-              recognition.start();
-            }
-          }, 100);
+          // Just restart silently for no-speech
           return;
         }
         
-        if (event.error === 'network' && shouldRestartRef.current) {
-          retryCountRef.current += 1;
-          if (retryCountRef.current <= maxRetries) {
-            console.log(`Network error, retrying... (${retryCountRef.current}/${maxRetries})`);
-            setTimeout(() => {
-              if (shouldRestartRef.current && recognitionRef.current) {
-                recognition.start();
-              }
-            }, 1000 * retryCountRef.current); // Increasing delay
-            return;
-          } else {
-            console.log('Max retries reached for network error');
-            retryCountRef.current = 0;
-            // Continue silently without showing error
-            return;
-          }
+        if (event.error === 'network') {
+          // Network errors are common, don't show to user
+          console.log('Network error detected, will retry');
+          return;
         }
         
         if (event.error === 'not-allowed') {
@@ -125,34 +108,20 @@ export function useVoiceRecognition({
           return;
         }
         
-        if (event.error === 'service-not-allowed') {
-          setError('Speech recognition service not available.');
-          setIsListening(false);
-          shouldRestartRef.current = false;
-          if (onError) onError(event);
-          return;
-        }
-        
-        // For aborted or other minor errors, don't show to user, just restart
-        if (event.error === 'aborted') {
-          return;
-        }
-        
-        // Only show error for serious issues
+        // For other errors, just log them
         console.warn('Speech recognition issue:', event.error);
-        // Don't set error state for network issues, just continue
       };
 
       recognition.onend = () => {
+        setIsListening(false);
+        
         // Auto-restart if we should continue listening
         if (shouldRestartRef.current) {
           setTimeout(() => {
-            if (shouldRestartRef.current && recognitionRef.current) {
-              recognition.start();
+            if (shouldRestartRef.current) {
+              startListening();
             }
-          }, 100);
-        } else {
-          setIsListening(false);
+          }, 500);
         }
       };
 
@@ -170,8 +139,12 @@ export function useVoiceRecognition({
     shouldRestartRef.current = false;
     
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (e) {
+        console.log('Error stopping recognition');
+      }
     }
     
     setIsListening(false);
@@ -182,7 +155,11 @@ export function useVoiceRecognition({
     return () => {
       shouldRestartRef.current = false;
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.log('Cleanup recognition');
+        }
       }
     };
   }, []);
