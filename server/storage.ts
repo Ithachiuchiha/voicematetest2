@@ -60,6 +60,8 @@ export class MemStorage implements IStorage {
     const newTask: Task = {
       ...task,
       id,
+      description: task.description || null,
+      dueDate: task.dueDate || null,
       createdAt: new Date(),
       completedAt: null,
     };
@@ -97,8 +99,13 @@ export class MemStorage implements IStorage {
   async createScheduleItem(item: InsertScheduleItem): Promise<ScheduleItem> {
     const id = this.currentScheduleId++;
     const newItem: ScheduleItem = {
-      ...item,
       id,
+      title: item.title,
+      description: item.description || null,
+      time: item.time,
+      repeatPattern: item.repeatPattern,
+      isActive: item.isActive ?? true,
+      color: item.color || "#FF69B4",
     };
     this.scheduleItems.set(id, newItem);
     return newItem;

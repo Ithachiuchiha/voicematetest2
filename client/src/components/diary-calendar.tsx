@@ -11,6 +11,13 @@ export default function DiaryCalendar() {
 
   const { data: entries = [], isLoading } = useQuery<DiaryEntry[]>({
     queryKey: ["/api/diary", selectedDate],
+    queryFn: async () => {
+      const response = await fetch(`/api/diary/${selectedDate}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch diary entries');
+      }
+      return response.json();
+    },
   });
 
   const getDaysInMonth = (date: Date) => {

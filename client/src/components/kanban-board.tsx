@@ -153,7 +153,7 @@ export default function KanbanBoard() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Enter task description" {...field} />
+                        <Textarea placeholder="Enter task description" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -270,20 +270,36 @@ export default function KanbanBoard() {
                           
                           {/* Status change buttons */}
                           <div className="mt-2 flex flex-wrap gap-1">
-                            {columns
-                              .filter(col => col.id !== task.status)
-                              .slice(0, 2)
-                              .map(col => (
-                                <Button
-                                  key={col.id}
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-6 px-2"
-                                  onClick={() => handleStatusChange(task.id, col.id)}
-                                >
-                                  {col.title}
-                                </Button>
-                              ))}
+                            {task.status !== 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-6 px-2 bg-green-100 hover:bg-green-200 text-green-800"
+                                onClick={() => handleStatusChange(task.id, 'completed')}
+                              >
+                                Complete
+                              </Button>
+                            )}
+                            {task.status !== 'halted' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-6 px-2 bg-red-100 hover:bg-red-200 text-red-800"
+                                onClick={() => handleStatusChange(task.id, 'halted')}
+                              >
+                                Halt
+                              </Button>
+                            )}
+                            {task.status !== 'progress' && task.status !== 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-6 px-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
+                                onClick={() => handleStatusChange(task.id, 'progress')}
+                              >
+                                In Progress
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
