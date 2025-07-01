@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { useVoiceRecognition } from "@/hooks/use-voice-recognition";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { localStorageManager } from "@/lib/local-storage";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Keyboard, Send } from "lucide-react";
 import type { InsertDiaryEntry, InsertTask } from "@shared/schema";
 
 export default function VoiceRecorder() {
   const [transcript, setTranscript] = useState("");
+  const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const settings = localStorageManager.getSettings();
@@ -19,6 +21,15 @@ export default function VoiceRecorder() {
     lang: settings.voiceLanguage || 'en-US',
     continuous: true,
     interimResults: true,
+    onError: (error) => {
+      console.error('Voice recognition error:', error);
+      toast({
+        title: "Voice recognition issue",
+        description: "Switched to manual input mode",
+        variant: "default"
+      });
+      setInputMode('text');
+    }
   });
 
   const saveDiaryMutation = useMutation({
@@ -59,8 +70,25 @@ export default function VoiceRecorder() {
     if (isListening) {
       stopListening();
     } else {
+      if (error && error.includes('network')) {
+        toast({
+          title: "Voice recognition unavailable",
+          description: "Network issue detected. Use manual input instead.",
+          variant: "destructive"
+        });
+        setInputMode('text');
+        return;
+      }
       startListening();
     }
+  };
+
+  const toggleInputMode = () => {
+    if (isListening) {
+      stopListening();
+    }
+    setInputMode(inputMode === 'voice' ? 'text' : 'voice');
+    setTranscript("");
   };
 
   const handleSaveEntry = () => {
@@ -125,42 +153,71 @@ export default function VoiceRecorder() {
     <Card className="border-2 border-border">
       <CardContent className="p-6">
         <div className="text-center mb-4">
-          <h2 className="text-lg font-semibold text-foreground mb-2">Voice Input</h2>
-          <p className="text-sm text-muted-foreground">Say "Task" to create a to-do item</p>
-          {error && (
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              {inputMode === 'voice' ? 'Voice Input' : 'Manual Input'}
+            </h2>
+            <Button
+              onClick={toggleInputMode}
+              variant="outline"
+              size="sm"
+              className="ml-2"
+            >
+              {inputMode === 'voice' ? <Keyboard className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Type or say "Task" at the beginning to create a to-do item
+          </p>
+          {error && inputMode === 'voice' && (
             <p className="text-sm text-red-500 mt-2">
-              {error}
+              Voice issue detected - try manual input
             </p>
           )}
         </div>
         
         <div className="flex flex-col items-center space-y-4">
-          <button
-            onClick={handleVoiceToggle}
-            className={`w-20 h-20 rounded-full flex items-center justify-center border-2 border-border transition-all duration-200 ${
-              isListening 
-                ? 'bg-accent voice-pulse' 
-                : 'bg-primary hover:bg-accent'
-            }`}
-          >
-            {isListening ? (
-              <MicOff className="text-accent-foreground w-8 h-8" />
-            ) : (
-              <Mic className="text-primary-foreground w-8 h-8" />
-            )}
-          </button>
-          
-          <div className="w-full">
-            <div className="bg-muted border-2 border-border rounded-lg p-4 min-h-[100px]">
-              <p className="text-foreground text-sm">
-                {transcript || (
-                  <span className="text-muted-foreground">
-                    {isListening ? "Listening... Speak now" : "Tap the microphone to start recording..."}
-                  </span>
-                )}
-              </p>
+          {inputMode === 'voice' ? (
+            <button
+              onClick={handleVoiceToggle}
+              disabled={!isSupported}
+              className={`w-20 h-20 rounded-full flex items-center justify-center border-2 border-border transition-all duration-200 ${
+                isListening 
+                  ? 'bg-accent voice-pulse' 
+                  : 'bg-primary hover:bg-accent'
+              } ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isListening ? (
+                <MicOff className="text-accent-foreground w-8 h-8" />
+              ) : (
+                <Mic className="text-primary-foreground w-8 h-8" />
+              )}
+            </button>
+          ) : (
+            <div className="w-full">
+              <Textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Type your entry here... Start with 'Task' to create a to-do item"
+                className="min-h-[120px] border-2 border-border resize-none"
+              />
             </div>
-          </div>
+          )}
+          
+          {inputMode === 'voice' && (
+            <div className="w-full">
+              <div className="bg-muted border-2 border-border rounded-lg p-4 min-h-[100px]">
+                <p className="text-foreground text-sm">
+                  {transcript || (
+                    <span className="text-muted-foreground">
+                      {!isSupported ? "Voice recognition not supported in this browser" :
+                       isListening ? "Listening... Speak now" : "Tap the microphone to start recording..."}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
           
           <div className="flex space-x-3 w-full">
             <Button 
@@ -168,6 +225,7 @@ export default function VoiceRecorder() {
               disabled={!transcript.trim() || saveDiaryMutation.isPending || saveTaskMutation.isPending}
               className="flex-1 bg-secondary text-secondary-foreground border-2 border-border hover:bg-secondary/90"
             >
+              <Send className="w-4 h-4 mr-2" />
               Save Entry
             </Button>
             <Button 
