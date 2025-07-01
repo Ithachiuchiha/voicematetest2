@@ -1,9 +1,12 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import express from 'express';
+import cors from 'cors';
 
 // Import your existing server routes
 const app = express();
 
+// Enable CORS for all routes
+app.use(cors({ origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
