@@ -57,13 +57,7 @@ export function useVoiceRecognition({
       recognition.lang = lang;
       recognition.maxAlternatives = 1;
       
-      // Additional settings for better performance
-      if ('grammars' in recognition) {
-        recognition.grammars = null;
-      }
-      if ('serviceURI' in recognition) {
-        recognition.serviceURI = '';
-      }
+      // Don't set grammars - it causes issues in some browsers
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -165,7 +159,8 @@ export function useVoiceRecognition({
       recognition.start();
     } catch (err) {
       console.error('Failed to start speech recognition:', err);
-      setError('Failed to start speech recognition');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Voice recognition failed: ${errorMessage}`);
       setIsListening(false);
       shouldRestartRef.current = false;
     }

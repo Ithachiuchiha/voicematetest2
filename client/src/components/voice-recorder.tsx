@@ -13,6 +13,7 @@ import type { InsertDiaryEntry, InsertTask } from "@shared/schema";
 export default function VoiceRecorder() {
   const [transcript, setTranscript] = useState("");
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
+  const [debugInfo, setDebugInfo] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const settings = localStorageManager.getSettings();
@@ -71,6 +72,17 @@ export default function VoiceRecorder() {
     }
     setInputMode(inputMode === 'voice' ? 'text' : 'voice');
     setTranscript("");
+  };
+
+  const checkVoiceSupport = () => {
+    const info = [];
+    info.push(`Browser: ${navigator.userAgent.substring(0, 50)}...`);
+    info.push(`SpeechRecognition: ${typeof window.SpeechRecognition !== 'undefined' ? 'Yes' : 'No'}`);
+    info.push(`webkitSpeechRecognition: ${typeof window.webkitSpeechRecognition !== 'undefined' ? 'Yes' : 'No'}`);
+    info.push(`HTTPS: ${location.protocol === 'https:' ? 'Yes' : 'No'}`);
+    info.push(`isSupported: ${isSupported ? 'Yes' : 'No'}`);
+    info.push(`Current error: ${error || 'None'}`);
+    setDebugInfo(info.join('\n'));
   };
 
   const handleSaveEntry = () => {
@@ -138,6 +150,15 @@ export default function VoiceRecorder() {
           <div className="flex items-center justify-center gap-2 mb-2">
             <h2 className="text-lg font-semibold text-foreground">
               {inputMode === 'voice' ? 'Voice Input' : 'Manual Input'}
+              {inputMode === 'voice' && (
+                <span className={`ml-2 text-xs px-2 py-1 rounded ${
+                  isListening ? 'bg-green-100 text-green-800' : 
+                  error ? 'bg-red-100 text-red-800' : 
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {isListening ? 'Listening' : error ? 'Error' : 'Ready'}
+                </span>
+              )}
             </h2>
             <Button
               onClick={toggleInputMode}
@@ -151,10 +172,24 @@ export default function VoiceRecorder() {
           <p className="text-sm text-muted-foreground">
             Type or say "Task" at the beginning to create a to-do item
           </p>
-          {error && error.includes('not-allowed') && (
-            <p className="text-sm text-red-500 mt-2">
-              Please allow microphone access to use voice input
-            </p>
+          {error && (
+            <div className="text-sm text-red-500 mt-2 p-2 border border-red-200 rounded bg-red-50">
+              <strong>Voice Error:</strong> {error}
+              <br />
+              <span className="text-xs">Please try manual input mode or refresh the page</span>
+              <br />
+              <Button onClick={checkVoiceSupport} size="sm" variant="outline" className="mt-1">
+                Debug Info
+              </Button>
+            </div>
+          )}
+          {debugInfo && (
+            <div className="text-xs text-gray-600 mt-2 p-2 border border-gray-200 rounded bg-gray-50 font-mono whitespace-pre-line">
+              {debugInfo}
+              <Button onClick={() => setDebugInfo("")} size="sm" variant="outline" className="mt-1 ml-2">
+                Close
+              </Button>
+            </div>
           )}
         </div>
         
