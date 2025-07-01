@@ -27,6 +27,8 @@ export function useVoiceRecognition({
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const shouldRestartRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
 
   // Check if speech recognition is supported
   const isSupported = typeof window !== 'undefined' && 
@@ -54,10 +56,19 @@ export function useVoiceRecognition({
       recognition.interimResults = interimResults;
       recognition.lang = lang;
       recognition.maxAlternatives = 1;
+      
+      // Additional settings for better performance
+      if ('grammars' in recognition) {
+        recognition.grammars = null;
+      }
+      if ('serviceURI' in recognition) {
+        recognition.serviceURI = '';
+      }
 
       recognition.onstart = () => {
         setIsListening(true);
         setError(null);
+        retryCountRef.current = 0; // Reset retry count on successful start
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -83,8 +94,9 @@ export function useVoiceRecognition({
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         
-        // Don't treat "no-speech" as a real error, just restart
+        // Handle different error types appropriately
         if (event.error === 'no-speech' && shouldRestartRef.current) {
+          // No speech detected - restart silently
           setTimeout(() => {
             if (shouldRestartRef.current && recognitionRef.current) {
               recognition.start();
@@ -93,11 +105,48 @@ export function useVoiceRecognition({
           return;
         }
         
-        // For other errors, stop and notify user
-        setError(`Speech recognition error: ${event.error}`);
-        setIsListening(false);
-        shouldRestartRef.current = false;
-        if (onError) onError(event);
+        if (event.error === 'network' && shouldRestartRef.current) {
+          retryCountRef.current += 1;
+          if (retryCountRef.current <= maxRetries) {
+            console.log(`Network error, retrying... (${retryCountRef.current}/${maxRetries})`);
+            setTimeout(() => {
+              if (shouldRestartRef.current && recognitionRef.current) {
+                recognition.start();
+              }
+            }, 1000 * retryCountRef.current); // Increasing delay
+            return;
+          } else {
+            console.log('Max retries reached for network error');
+            retryCountRef.current = 0;
+            // Continue silently without showing error
+            return;
+          }
+        }
+        
+        if (event.error === 'not-allowed') {
+          setError('Microphone access denied. Please allow microphone permissions.');
+          setIsListening(false);
+          shouldRestartRef.current = false;
+          if (onError) onError(event);
+          return;
+        }
+        
+        if (event.error === 'service-not-allowed') {
+          setError('Speech recognition service not available.');
+          setIsListening(false);
+          shouldRestartRef.current = false;
+          if (onError) onError(event);
+          return;
+        }
+        
+        // For aborted or other minor errors, don't show to user, just restart
+        if (event.error === 'aborted') {
+          return;
+        }
+        
+        // Only show error for serious issues
+        console.warn('Speech recognition issue:', event.error);
+        // Don't set error state for network issues, just continue
       };
 
       recognition.onend = () => {

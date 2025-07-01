@@ -21,15 +21,6 @@ export default function VoiceRecorder() {
     lang: settings.voiceLanguage || 'en-US',
     continuous: true,
     interimResults: true,
-    onError: (error) => {
-      console.error('Voice recognition error:', error);
-      toast({
-        title: "Voice recognition issue",
-        description: "Switched to manual input mode",
-        variant: "default"
-      });
-      setInputMode('text');
-    }
   });
 
   const saveDiaryMutation = useMutation({
@@ -70,15 +61,6 @@ export default function VoiceRecorder() {
     if (isListening) {
       stopListening();
     } else {
-      if (error && error.includes('network')) {
-        toast({
-          title: "Voice recognition unavailable",
-          description: "Network issue detected. Use manual input instead.",
-          variant: "destructive"
-        });
-        setInputMode('text');
-        return;
-      }
       startListening();
     }
   };
@@ -169,9 +151,9 @@ export default function VoiceRecorder() {
           <p className="text-sm text-muted-foreground">
             Type or say "Task" at the beginning to create a to-do item
           </p>
-          {error && inputMode === 'voice' && (
+          {error && error.includes('not-allowed') && (
             <p className="text-sm text-red-500 mt-2">
-              Voice issue detected - try manual input
+              Please allow microphone access to use voice input
             </p>
           )}
         </div>
