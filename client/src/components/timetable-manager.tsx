@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScheduleItemSchema } from "@shared/schema";
-import { Plus, Edit3 } from "lucide-react";
+import { Plus, Edit3, Trash2 } from "lucide-react";
 import type { ScheduleItem, InsertScheduleItem } from "@shared/schema";
 
 export default function TimetableManager() {
@@ -54,6 +54,20 @@ export default function TimetableManager() {
     },
   });
 
+  const deleteScheduleMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/schedule/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+      toast({ title: "Schedule item deleted successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete schedule item", variant: "destructive" });
+    },
+  });
+
   const form = useForm<InsertScheduleItem>({
     resolver: zodResolver(insertScheduleItemSchema),
     defaultValues: {
@@ -75,6 +89,12 @@ export default function TimetableManager() {
       id: itemId,
       updates: { isActive },
     });
+  };
+
+  const handleDeleteItem = (itemId: number) => {
+    if (window.confirm('Are you sure you want to delete this schedule item?')) {
+      deleteScheduleMutation.mutate(itemId);
+    }
   };
 
   const formatTime = (time: string) => {
@@ -142,7 +162,7 @@ export default function TimetableManager() {
                         <FormItem>
                           <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Enter description" {...field} />
+                            <Textarea placeholder="Enter description" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -253,6 +273,15 @@ export default function TimetableManager() {
                       </span>
                       <Button variant="ghost" size="sm" className="h-auto p-1">
                         <Edit3 className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-auto p-1 text-red-600 hover:text-red-800 hover:bg-red-50"
+                        onClick={() => handleDeleteItem(item.id)}
+                        disabled={deleteScheduleMutation.isPending}
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                       <Switch
                         checked={item.isActive}
