@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface VoiceRecognitionOptions {
-  onResult: (transcript: string) => void;
+  onResult: (transcript: string, isFinal: boolean) => void;
   onError?: (error: Event) => void;
   continuous?: boolean;
   interimResults?: boolean;
@@ -14,19 +14,22 @@ interface VoiceRecognitionHook {
   startListening: () => void;
   stopListening: () => void;
   error: string | null;
+  transcript: string;
 }
 
 export function useVoiceRecognition({
   onResult,
   onError,
-  continuous = true,
+  continuous = false,
   interimResults = true,
   lang = 'en-US',
 }: VoiceRecognitionOptions): VoiceRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
-  const shouldRestartRef = useRef(false);
+  const isActiveRef = useRef(false);
+  const finalTranscriptRef = useRef('');
 
   // Check if speech recognition is supported
   const isSupported = typeof window !== 'undefined' && 
@@ -38,14 +41,8 @@ export function useVoiceRecognition({
       return;
     }
 
-    // Stop any existing recognition
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-        recognitionRef.current = null;
-      } catch (e) {
-        console.log('Stopping existing recognition');
-      }
+    if (isActiveRef.current) {
+      return; // Already listening
     }
 
     try {
@@ -54,7 +51,8 @@ export function useVoiceRecognition({
       
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
-      shouldRestartRef.current = true;
+      isActiveRef.current = true;
+      finalTranscriptRef.current = '';
       
       recognition.continuous = continuous;
       recognition.interimResults = interimResults;
@@ -64,6 +62,7 @@ export function useVoiceRecognition({
       recognition.onstart = () => {
         setIsListening(true);
         setError(null);
+        setTranscript('');
       };
 
       recognition.onresult = (event: any) => {
@@ -79,32 +78,37 @@ export function useVoiceRecognition({
           }
         }
         
-        const currentTranscript = finalTranscript || interimTranscript;
-        if (currentTranscript) {
-          onResult(currentTranscript.trim());
+        if (finalTranscript) {
+          finalTranscriptRef.current += finalTranscript + ' ';
+          const fullTranscript = finalTranscriptRef.current.trim();
+          setTranscript(fullTranscript);
+          onResult(fullTranscript, true);
+        } else if (interimTranscript) {
+          const currentTranscript = (finalTranscriptRef.current + interimTranscript).trim();
+          setTranscript(currentTranscript);
+          onResult(currentTranscript, false);
         }
       };
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         
-        // Handle different types of errors
-        if (event.error === 'no-speech' && shouldRestartRef.current) {
-          // Just restart silently for no-speech
+        if (event.error === 'not-allowed') {
+          setError('Microphone access denied. Please allow microphone permissions.');
+          setIsListening(false);
+          isActiveRef.current = false;
+          if (onError) onError(event);
+          return;
+        }
+        
+        if (event.error === 'no-speech') {
+          // Silently handle no speech
           return;
         }
         
         if (event.error === 'network') {
-          // Network errors are common, don't show to user
-          console.log('Network error detected, will retry');
-          return;
-        }
-        
-        if (event.error === 'not-allowed') {
-          setError('Microphone access denied. Please allow microphone permissions.');
-          setIsListening(false);
-          shouldRestartRef.current = false;
-          if (onError) onError(event);
+          // Don't spam user with network errors
+          console.log('Network error detected');
           return;
         }
         
@@ -114,15 +118,8 @@ export function useVoiceRecognition({
 
       recognition.onend = () => {
         setIsListening(false);
-        
-        // Auto-restart if we should continue listening
-        if (shouldRestartRef.current) {
-          setTimeout(() => {
-            if (shouldRestartRef.current) {
-              startListening();
-            }
-          }, 500);
-        }
+        isActiveRef.current = false;
+        recognitionRef.current = null;
       };
 
       recognition.start();
@@ -131,12 +128,12 @@ export function useVoiceRecognition({
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(`Voice recognition failed: ${errorMessage}`);
       setIsListening(false);
-      shouldRestartRef.current = false;
+      isActiveRef.current = false;
     }
   }, [isSupported, continuous, interimResults, lang, onResult, onError]);
 
   const stopListening = useCallback(() => {
-    shouldRestartRef.current = false;
+    isActiveRef.current = false;
     
     if (recognitionRef.current) {
       try {
@@ -153,7 +150,7 @@ export function useVoiceRecognition({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      shouldRestartRef.current = false;
+      isActiveRef.current = false;
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -170,6 +167,7 @@ export function useVoiceRecognition({
     startListening,
     stopListening,
     error,
+    transcript,
   };
 }
 

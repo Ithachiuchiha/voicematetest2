@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,20 +7,67 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { localStorageManager } from "@/lib/local-storage";
-import { Mic, MicOff, Keyboard, Send } from "lucide-react";
+import { Mic, MicOff, Keyboard, Send, Zap } from "lucide-react";
 import type { InsertDiaryEntry, InsertTask } from "@shared/schema";
+
+// Task keywords for intelligent detection
+const TASK_KEYWORDS = [
+  'task', 'todo', 'remind', 'remember', 'need to', 'should', 'must', 'have to',
+  'appointment', 'meeting', 'call', 'email', 'buy', 'get', 'pick up', 'finish',
+  'complete', 'work on', 'schedule', 'plan', 'deadline', 'due', 'urgent', 'important'
+];
+
+function detectTaskFromText(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return TASK_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
+
+function extractTaskInfo(text: string): { title: string; description?: string; priority: 'low' | 'medium' | 'high' } {
+  const lowerText = text.toLowerCase();
+  
+  // Determine priority based on keywords
+  let priority: 'low' | 'medium' | 'high' = 'medium';
+  if (lowerText.includes('urgent') || lowerText.includes('asap') || lowerText.includes('immediately')) {
+    priority = 'high';
+  } else if (lowerText.includes('when possible') || lowerText.includes('sometime') || lowerText.includes('eventually')) {
+    priority = 'low';
+  }
+
+  // Extract title (first sentence or up to 50 characters)
+  const sentences = text.split(/[.!?]+/);
+  const title = sentences[0].trim();
+  
+  // Use remaining text as description if available
+  const description = sentences.length > 1 ? sentences.slice(1).join('. ').trim() : undefined;
+
+  return {
+    title: title.length > 50 ? title.substring(0, 47) + '...' : title,
+    description: description && description.length > 0 ? description : undefined,
+    priority
+  };
+}
 
 export default function VoiceRecorder() {
   const [transcript, setTranscript] = useState("");
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
-  const [debugInfo, setDebugInfo] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const settings = localStorageManager.getSettings();
+
+  const handleVoiceResult = useCallback((text: string, isFinal: boolean) => {
+    setTranscript(text);
+    
+    // Auto-process when speech is final and contains enough content
+    if (isFinal && text.length > 10) {
+      handleAutoProcess(text);
+    }
+  }, []);
+
   const { isListening, startListening, stopListening, isSupported, error } = useVoiceRecognition({
-    onResult: setTranscript,
+    onResult: handleVoiceResult,
     lang: settings.voiceLanguage || 'en-US',
-    continuous: true,
+    continuous: false,
     interimResults: true,
   });
 
@@ -31,7 +78,7 @@ export default function VoiceRecorder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
-      toast({ title: "Diary entry saved successfully!" });
+      toast({ title: "Diary entry saved!" });
     },
     onError: () => {
       toast({ 
@@ -48,7 +95,7 @@ export default function VoiceRecorder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task created successfully!" });
+      toast({ title: "Task created!" });
     },
     onError: () => {
       toast({ 
@@ -58,10 +105,59 @@ export default function VoiceRecorder() {
     },
   });
 
+  const handleAutoProcess = async (text: string) => {
+    if (!text.trim()) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      if (detectTaskFromText(text)) {
+        // Create task
+        const taskInfo = extractTaskInfo(text);
+        const task: InsertTask = {
+          title: taskInfo.title,
+          description: taskInfo.description,
+          status: 'not_started',
+          priority: taskInfo.priority,
+          dueDate: null,
+        };
+        await saveTaskMutation.mutateAsync(task);
+        toast({ 
+          title: "Smart Task Created! 🎯",
+          description: `Priority: ${taskInfo.priority}` 
+        });
+      } else {
+        // Create diary entry
+        const entry: InsertDiaryEntry = {
+          content: text,
+          date: new Date().toISOString().split('T')[0],
+        };
+        await saveDiaryMutation.mutateAsync(entry);
+        toast({ 
+          title: "Diary Entry Saved! 📝",
+          description: "Your thoughts have been recorded" 
+        });
+      }
+      
+      setTranscript("");
+    } catch (error) {
+      console.error('Auto-process error:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleManualSubmit = () => {
+    if (transcript.trim()) {
+      handleAutoProcess(transcript);
+    }
+  };
+
   const handleVoiceToggle = () => {
     if (isListening) {
       stopListening();
     } else {
+      setTranscript("");
       startListening();
     }
   };
@@ -74,185 +170,126 @@ export default function VoiceRecorder() {
     setTranscript("");
   };
 
-  const checkVoiceSupport = () => {
-    const info = [];
-    info.push(`Browser: ${navigator.userAgent.substring(0, 50)}...`);
-    info.push(`SpeechRecognition: ${typeof window.SpeechRecognition !== 'undefined' ? 'Yes' : 'No'}`);
-    info.push(`webkitSpeechRecognition: ${typeof window.webkitSpeechRecognition !== 'undefined' ? 'Yes' : 'No'}`);
-    info.push(`HTTPS: ${location.protocol === 'https:' ? 'Yes' : 'No'}`);
-    info.push(`isSupported: ${isSupported ? 'Yes' : 'No'}`);
-    info.push(`Current error: ${error || 'None'}`);
-    setDebugInfo(info.join('\n'));
-  };
-
-  const handleSaveEntry = () => {
-    if (!transcript.trim()) {
-      toast({ 
-        title: "No content to save", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Check if transcript contains "Task" keyword for automatic categorization
-    if (transcript.toLowerCase().includes('task')) {
-      // Extract task content (remove "Task" prefix if present)
-      const taskContent = transcript.replace(/^task:?\s*/i, '').trim();
-      const [title, ...descriptionParts] = taskContent.split('.');
-      
-      const task: InsertTask = {
-        title: title.trim() || taskContent,
-        description: descriptionParts.join('.').trim() || undefined,
-        status: 'not_started',
-        priority: 'medium',
-        dueDate: today,
-      };
-      
-      saveTaskMutation.mutate(task);
-    } else {
-      // Save as diary entry
-      const entry: InsertDiaryEntry = {
-        content: transcript,
-        date: today,
-      };
-      
-      saveDiaryMutation.mutate(entry);
-    }
-    
-    setTranscript("");
-  };
-
-  const handleClear = () => {
-    setTranscript("");
-    stopListening();
-  };
-
-  if (!isSupported) {
-    return (
-      <Card className="border-2 border-border">
-        <CardContent className="p-6">
-          <div className="text-center">
-            <p className="text-muted-foreground">
-              Voice recognition is not supported in your browser
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isTaskMode = transcript && detectTaskFromText(transcript);
 
   return (
-    <Card className="border-2 border-border">
+    <Card className="w-full max-w-2xl mx-auto shadow-lg border-2">
       <CardContent className="p-6">
-        <div className="text-center mb-4">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <h2 className="text-lg font-semibold text-foreground">
-              {inputMode === 'voice' ? 'Voice Input' : 'Manual Input'}
-              {inputMode === 'voice' && (
-                <span className={`ml-2 text-xs px-2 py-1 rounded ${
-                  isListening ? 'bg-green-100 text-green-800' : 
-                  error ? 'bg-red-100 text-red-800' : 
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  {isListening ? 'Listening' : error ? 'Error' : 'Ready'}
-                </span>
-              )}
-            </h2>
+        <div className="space-y-4">
+          {/* Mode Toggle */}
+          <div className="flex justify-center">
             <Button
-              onClick={toggleInputMode}
               variant="outline"
               size="sm"
-              className="ml-2"
+              onClick={toggleInputMode}
+              className="flex items-center gap-2"
             >
               {inputMode === 'voice' ? <Keyboard className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {inputMode === 'voice' ? 'Switch to Text' : 'Switch to Voice'}
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Type or say "Task" at the beginning to create a to-do item
-          </p>
-          {error && (
-            <div className="text-sm text-red-500 mt-2 p-2 border border-red-200 rounded bg-red-50">
-              <strong>Voice Error:</strong> {error}
-              <br />
-              <span className="text-xs">Please try manual input mode or refresh the page</span>
-              <br />
-              <Button onClick={checkVoiceSupport} size="sm" variant="outline" className="mt-1">
-                Debug Info
+
+          {/* Voice Input */}
+          {inputMode === 'voice' && (
+            <div className="text-center space-y-4">
+              <Button
+                onClick={handleVoiceToggle}
+                disabled={!isSupported || isProcessing}
+                size="lg"
+                className={`w-16 h-16 rounded-full transition-all duration-200 ${
+                  isListening 
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                    : 'bg-primary hover:bg-primary/90'
+                }`}
+              >
+                {isListening ? (
+                  <MicOff className="w-6 h-6" />
+                ) : (
+                  <Mic className="w-6 h-6" />
+                )}
               </Button>
-            </div>
-          )}
-          {debugInfo && (
-            <div className="text-xs text-gray-600 mt-2 p-2 border border-gray-200 rounded bg-gray-50 font-mono whitespace-pre-line">
-              {debugInfo}
-              <Button onClick={() => setDebugInfo("")} size="sm" variant="outline" className="mt-1 ml-2">
-                Close
-              </Button>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex flex-col items-center space-y-4">
-          {inputMode === 'voice' ? (
-            <button
-              onClick={handleVoiceToggle}
-              disabled={!isSupported}
-              className={`w-20 h-20 rounded-full flex items-center justify-center border-2 border-border transition-all duration-200 ${
-                isListening 
-                  ? 'bg-accent voice-pulse' 
-                  : 'bg-primary hover:bg-accent'
-              } ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isListening ? (
-                <MicOff className="text-accent-foreground w-8 h-8" />
-              ) : (
-                <Mic className="text-primary-foreground w-8 h-8" />
+              
+              <p className="text-sm text-muted-foreground">
+                {isListening ? 'Listening... Speak now' : 'Click to start speaking'}
+              </p>
+              
+              {!isSupported && (
+                <p className="text-sm text-destructive">
+                  Voice recognition not supported in this browser
+                </p>
               )}
-            </button>
-          ) : (
-            <div className="w-full">
+              
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
+            </div>
+          )}
+
+          {/* Text Input */}
+          {inputMode === 'text' && (
+            <div className="space-y-2">
               <Textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
-                placeholder="Type your entry here... Start with 'Task' to create a to-do item"
-                className="min-h-[120px] border-2 border-border resize-none"
+                placeholder="Type your thoughts, tasks, or reminders here..."
+                className="min-h-[120px] text-base"
+                disabled={isProcessing}
               />
+              <Button 
+                onClick={handleManualSubmit}
+                disabled={!transcript.trim() || isProcessing}
+                className="w-full"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {isProcessing ? 'Processing...' : 'Submit'}
+              </Button>
             </div>
           )}
-          
-          {inputMode === 'voice' && (
-            <div className="w-full">
-              <div className="bg-muted border-2 border-border rounded-lg p-4 min-h-[100px]">
-                <p className="text-foreground text-sm">
-                  {transcript || (
-                    <span className="text-muted-foreground">
-                      {!isSupported ? "Voice recognition not supported in this browser" :
-                       isListening ? "Listening... Speak now" : "Tap the microphone to start recording..."}
-                    </span>
+
+          {/* Transcript Display */}
+          {transcript && (
+            <div className="space-y-2">
+              <div className={`p-4 rounded-lg border-2 transition-colors ${
+                isTaskMode 
+                  ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950' 
+                  : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {isTaskMode ? (
+                    <>
+                      <Zap className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm font-medium text-orange-600">Task Detected</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-600">Diary Entry</span>
+                    </>
                   )}
+                </div>
+                <p className="text-sm leading-relaxed">{transcript}</p>
+              </div>
+              
+              {inputMode === 'voice' && (
+                <p className="text-xs text-center text-muted-foreground">
+                  {isTaskMode 
+                    ? '🎯 Will be added as a task automatically' 
+                    : '📝 Will be saved as diary entry automatically'
+                  }
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* Processing State */}
+          {isProcessing && (
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Processing your input...
               </div>
             </div>
           )}
-          
-          <div className="flex space-x-3 w-full">
-            <Button 
-              onClick={handleSaveEntry}
-              disabled={!transcript.trim() || saveDiaryMutation.isPending || saveTaskMutation.isPending}
-              className="flex-1 bg-secondary text-secondary-foreground border-2 border-border hover:bg-secondary/90"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Save Entry
-            </Button>
-            <Button 
-              onClick={handleClear}
-              variant="outline"
-              className="flex-1 border-2 border-border"
-            >
-              Clear
-            </Button>
-          </div>
         </div>
       </CardContent>
     </Card>
