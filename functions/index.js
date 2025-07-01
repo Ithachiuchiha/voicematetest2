@@ -32,7 +32,7 @@ class MemStorage {
     const newEntry = {
       ...entry,
       id,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
     this.diaryEntries.set(id, newEntry);
     return newEntry;
@@ -51,7 +51,7 @@ class MemStorage {
     const newTask = {
       ...task,
       id,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       completedAt: null,
     };
     this.tasks.set(id, newTask);
@@ -101,6 +101,12 @@ class MemStorage {
 
 const storage = new MemStorage();
 
+// Add logging middleware for debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`, req.body || '');
+  next();
+});
+
 // Diary routes
 app.get('/api/diary/:date', async (req, res) => {
   try {
@@ -114,20 +120,25 @@ app.get('/api/diary/:date', async (req, res) => {
 
 app.post('/api/diary', async (req, res) => {
   try {
+    console.log('Creating diary entry with data:', req.body);
     const newEntry = await storage.createDiaryEntry(req.body);
+    console.log('Created diary entry successfully:', newEntry.id);
     res.json(newEntry);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create diary entry' });
+    console.error('Error creating diary entry:', error);
+    res.status(500).json({ error: 'Failed to create diary entry', details: error.message });
   }
 });
 
 app.delete('/api/diary/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    console.log('Deleting diary entry:', id);
     await storage.deleteDiaryEntry(id);
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete diary entry' });
+    console.error('Error deleting diary entry:', error);
+    res.status(500).json({ error: 'Failed to delete diary entry', details: error.message });
   }
 });
 
@@ -135,18 +146,23 @@ app.delete('/api/diary/:id', async (req, res) => {
 app.get('/api/tasks', async (req, res) => {
   try {
     const tasks = await storage.getAllTasks();
+    console.log('Fetched tasks:', tasks.length);
     res.json(tasks);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch tasks' });
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks', details: error.message });
   }
 });
 
 app.post('/api/tasks', async (req, res) => {
   try {
+    console.log('Creating task with data:', req.body);
     const newTask = await storage.createTask(req.body);
+    console.log('Created task successfully:', newTask.id);
     res.json(newTask);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create task' });
+    console.error('Error creating task:', error);
+    res.status(500).json({ error: 'Failed to create task', details: error.message });
   }
 });
 

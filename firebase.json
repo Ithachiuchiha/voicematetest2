@@ -18,11 +18,24 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css)",
+        "source": "**/*.@(js|css|map)",
         "headers": [
           {
             "key": "Cache-Control",
             "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cross-Origin-Embedder-Policy",
+            "value": "unsafe-none"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy", 
+            "value": "same-origin-allow-popups"
           }
         ]
       }
