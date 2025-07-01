@@ -108,11 +108,55 @@ Voice Mate is a Progressive Web App that combines voice diary, task management, 
 - `DATABASE_URL` for PostgreSQL connection
 - Replit-specific development features enabled conditionally
 
+## Capacitor Integration
+
+### Android APK Conversion
+- **Configuration**: `capacitor.config.ts` with complete app settings
+- **Build Script**: `prepare-android.sh` for automated setup
+- **Documentation**: Comprehensive guides for deployment
+
+### Mobile Features
+- Native notifications with custom sounds
+- Microphone permissions for voice recording
+- Offline storage and sync capabilities
+- Native splash screen and status bar theming
+- Haptic feedback integration
+
+### Required Dependencies
+```bash
+npm install @capacitor/core @capacitor/android @capacitor/cli
+npm install @capacitor/splash-screen @capacitor/status-bar @capacitor/keyboard
+npm install @capacitor/local-notifications @capacitor/haptics @capacitor/device
+npm install @capacitor/network @capacitor/storage @capacitor/filesystem
+```
+
+### Build Commands
+- `bash prepare-android.sh` - Automated Android setup
+- `npx cap sync android` - Sync web assets with native project
+- `npx cap open android` - Open Android Studio for APK building
+
+## Documentation Files
+
+### Core Documentation
+- **CAPACITOR_SETUP.md**: Step-by-step Capacitor installation and configuration
+- **DEPENDENCIES_DOCUMENTATION.md**: Complete library documentation with functions
+- **APP_DEPLOYMENT_GUIDE.md**: PWA and Android deployment instructions
+
+### Key Features Documented
+- Voice recognition with 10+ language support
+- Custom notification sounds upload and management
+- Progressive Web App installation and offline support
+- Android permissions and native features integration
+- Production build and Google Play Store preparation
+
 ## Changelog
 
 ```
 Changelog:
 - July 01, 2025. Initial setup
+- July 01, 2025. Added comprehensive settings page with custom notification sounds
+- July 01, 2025. Created Capacitor configuration for Android APK conversion
+- July 01, 2025. Added complete documentation suite for deployment
 ```
 
 ## User Preferences
