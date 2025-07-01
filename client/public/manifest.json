@@ -1,0 +1,39 @@
+{
+  "name": "Voice Mate",
+  "short_name": "VoiceMate",
+  "description": "Your voice-powered assistant for diary, tasks, and scheduling",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFB6C1",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities"],
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiNGRkI2QzEiLz4KPHN2ZyB4PSI0OCIgeT0iNDgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjMDAwMDAwIj4KPHA+PHBhdGggZD0ibTEyIDEuOTUyIDQuNSAyLjY2NGwyLjY2NCA0LjUtLjYyOCA0Ljg5MS0yLjI0MSA0LjQ5TDEyIDIwLjM5bC00LjI5NS0xLjkzNi0yLjI0MS00LjQ5LS42MjgtNC44OTFMNy41IDQuNjE2IDEyIDEuOTUyem0wIDE1LjU4M2MzLjAzNyAwIDUuNS0yLjQ2MyA1LjUtNS41UzE1LjAzNyA2LjUzNSAxMiA2LjUzNXMtNS41IDIuNDYzLTUuNSA1LjUgMi40NjMgNS41IDUuNSA1LjV6Ii8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiLz4KPC9zdmc+Cjwvc3ZnPgo=",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iNjQiIGZpbGw9IiNGRkI2QzEiLz4KPHN2ZyB4PSIxMjgiIHk9IjEyOCIgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMDAwMCI+CjxwYXRoIGQ9Im0xMiAxLjk1MiA0LjUgMi42NjQgMi42NjQgNC41LS42MjggNC44OTEtMi4yNDEgNC40OUwxMiAyMC4zOWwtNC4yOTUtMS45MzYtMi4yNDEtNC40OS0uNjI4LTQuODkxTDcuNSA0LjYxNiAxMiAxLjk1MnptMCAxNS41ODNjMy4wMzcgMCA1LjUtMi40NjMgNS41LTUuNVMxNS4wMzcgNi41MzUgMTIgNi41MzVzLTUuNSAyLjQ2My01LjUgNS41IDIuNDYzIDUuNSA1LjUgNS41eiIvPgo8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIzIi8+Cjwvc3ZnPgo=",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjU2OCIgdmlld0JveD0iMCAwIDMyMCA1NjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iNTY4IiBmaWxsPSIjRkZGRkZGIi8+CjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9Ijg4IiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iI0ZGQjZDMSIvPgo8dGV4dCB4PSI2MCIgeT0iMzYiIGZvbnQtZmFtaWx5PSJJbnRlciIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzAwMDAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Vm9pY2UgTWF0ZTwvdGV4dD4KPGNpcmNsZSBjeD0iMTYwIiBjeT0iMTUwIiByPSI0MCIgZmlsbD0iI0ZGQjZDMSIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2Utd2lkdGg9IjIiLz4KPHN2ZyB4PSIxNDAiIHk9IjEzMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMwMDAwMDAiPgo8cGF0aCBkPSJNMTIgMTQuNTEyUTEzLjEwNiAxNC41MTIgMTMuOTI0IDEzLjY5NFExNC43NDIgMTIuODc2IDE0Ljc0MiAxMS43N1Y1LjI1UTE0Ljc0MiA0LjE0NCAxMy45MjQgMy4zMjZRMTMuMTA2IDIuNTA4IDEyIDIuNTA4UTEwLjg5NCAyLjUwOCAxMC4wNzYgMy4zMjZROS4yNTggNC4xNDQgOS4yNTggNS4yNVYxMS43N1E5LjI1OCAxMi44NzYgMTAuMDc2IDEzLjY5NFExMC44OTQgMTQuNTEyIDEyIDE0LjUxMlpNMTEuNSAxOS45MlExMC41MyAxOS45MiA5LjcxNSAxOS4xMDVROC45IDE4LjI5IDguOSAxNy4zMlY2LjA0UzguOSA1LjA3IDkuNzE1IDQuMjU1UzkuNSAzLjQgMTAuNSAzLjRTMTIuNSA0LjI1NSAxMi41IDUuMjI1VjE3LjMxNVMxMi41IDE4LjI4NSAxMS43ODUgMTkuMTAxUzExLjUgMTkuOTIgMTEuNSAxOS45MloiLz4KPC9zdmc+Cjwvc3ZnPgo=",
+      "sizes": "320x568",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "features": [
+    "Cross Platform",
+    "Voice Recognition",
+    "Offline Storage",
+    "Push Notifications"
+  ],
+  "prefer_related_applications": false
+}
