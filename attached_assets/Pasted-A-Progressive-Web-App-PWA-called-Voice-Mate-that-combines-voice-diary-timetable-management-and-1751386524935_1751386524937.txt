@@ -1,0 +1,20 @@
+A Progressive Web App (PWA) called "Voice Mate" that combines voice diary, timetable management, and to-do list functionality with local data storage and real-time voice-to-text conversion. The app intelligently detects keywords like "Task" to automatically categorize voice entries into appropriate sections, while providing timely notifications with sound and vibration for scheduled activities.
+
+Core Features:
+
+Voice-to-text diary with automatic task detection using keywords like "Task" - entries go to to-do list, others become diary entries with timestamps
+Calendar-based diary page showing daily summaries and navigation to previous days
+Kanban-style to-do board with columns: Not Started, Started, Progress, Completed, Halted, plus notifications when scheduled times arrive. 
+Timetable page for routine activities (medicine reminders, wake-up times, study sessions) with automatic notifications and delete option
+Visual References:
+Inspired by Notion's clean interface and Microsoft To-Do's task organization, known for their minimalistic design and intuitive user experience.
+settings page can you please set up settings one of the functions in settings page is adding custom notification sounds and other funtions
+Style Guide:
+
+Colors: Primary #FFB6C1 (soft pink), Secondary #000000 (black), Background #FFFFFF (white), Text #333333 (dark grey), Accent #FF69B4 (hot pink), Border #000000 (black strokes)
+Design: Inter/Roboto fonts, minimalistic card-based layout with black stroke borders, clean typography, subtle animations, mobile-first responsive design optimized for PWA installation with proper manifest.json, service worker configuration, and comprehensive documentation for dependencies and config files to support future Capacitor integration for APK conversion
+note  (importent):
+the app will be convertes into android app using capacitor Technique so please use sutable stable versions
+ AGP Version:  8.5.0 (compatible with most Android Studio versions)
+Gradle Version: 8.7 (matches AGP 8.5.0 requirements)
+SDK Versions: API 29 (supported android 10 )

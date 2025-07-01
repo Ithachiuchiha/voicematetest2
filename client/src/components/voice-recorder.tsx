@@ -14,9 +14,11 @@ export default function VoiceRecorder() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const settings = localStorageManager.getSettings();
-  const { isListening, startListening, stopListening, isSupported } = useVoiceRecognition({
+  const { isListening, startListening, stopListening, isSupported, error } = useVoiceRecognition({
     onResult: setTranscript,
-    lang: settings.voiceLanguage,
+    lang: settings.voiceLanguage || 'en-US',
+    continuous: true,
+    interimResults: true,
   });
 
   const saveDiaryMutation = useMutation({
@@ -125,6 +127,11 @@ export default function VoiceRecorder() {
         <div className="text-center mb-4">
           <h2 className="text-lg font-semibold text-foreground mb-2">Voice Input</h2>
           <p className="text-sm text-muted-foreground">Say "Task" to create a to-do item</p>
+          {error && (
+            <p className="text-sm text-red-500 mt-2">
+              {error}
+            </p>
+          )}
         </div>
         
         <div className="flex flex-col items-center space-y-4">
