@@ -1,9 +1,9 @@
 import { useState } from "react";
-import VoiceRecorder from "@/components/voice-recorder";
-import DiaryCalendar from "@/components/diary-calendar";
-import KanbanBoard from "@/components/kanban-board";
-import TimetableManager from "@/components/timetable-manager";
-import Navigation from "@/components/navigation";
+import VoiceRecorder from "../components/voice-recorder";
+import DiaryCalendar from "../components/diary-calendar";
+import KanbanBoard from "../components/kanban-board";
+import TimetableManager from "../components/timetable-manager";
+import Navigation from "../components/navigation";
 import { Mic, Settings, Bell } from "lucide-react";
 import { Link } from "wouter";
 
