@@ -91,8 +91,7 @@ export function useVoiceRecognition({
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        
+        // Only log critical errors, suppress network/connection issues
         if (event.error === 'not-allowed') {
           setError('Microphone access denied. Please allow microphone permissions.');
           setIsListening(false);
@@ -102,18 +101,26 @@ export function useVoiceRecognition({
         }
         
         if (event.error === 'no-speech') {
-          // Silently handle no speech
+          // Silently handle no speech - this is normal
           return;
         }
         
         if (event.error === 'network') {
-          // Don't spam user with network errors
-          console.log('Network error detected');
+          // Network errors are common and expected - don't show to user
           return;
         }
         
-        // For other errors, just log them
-        console.warn('Speech recognition issue:', event.error);
+        if (event.error === 'audio-capture' || event.error === 'service-not-allowed') {
+          setError('Unable to access microphone. Please check your browser permissions.');
+          setIsListening(false);
+          isActiveRef.current = false;
+          return;
+        }
+        
+        // Only log non-network errors for debugging (don't show to user)
+        if (event.error !== 'network') {
+          console.debug('Speech recognition event:', event.error);
+        }
       };
 
       recognition.onend = () => {

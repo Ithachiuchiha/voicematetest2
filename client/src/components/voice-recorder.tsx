@@ -55,22 +55,6 @@ export default function VoiceRecorder() {
   const queryClient = useQueryClient();
   const settings = localStorageManager.getSettings();
 
-  const handleVoiceResult = useCallback((text: string, isFinal: boolean) => {
-    setTranscript(text);
-    
-    // Auto-process when speech is final and contains enough content
-    if (isFinal && text.length > 10) {
-      handleAutoProcess(text);
-    }
-  }, []);
-
-  const { isListening, startListening, stopListening, isSupported, error } = useVoiceRecognition({
-    onResult: handleVoiceResult,
-    lang: settings.voiceLanguage || 'en-US',
-    continuous: false,
-    interimResults: true,
-  });
-
   const saveDiaryMutation = useMutation({
     mutationFn: async (entry: InsertDiaryEntry) => {
       const response = await apiRequest("POST", "/api/diary", entry);
@@ -105,7 +89,7 @@ export default function VoiceRecorder() {
     },
   });
 
-  const handleAutoProcess = async (text: string) => {
+  const processInput = async (text: string) => {
     if (!text.trim()) return;
     
     setIsProcessing(true);
@@ -147,9 +131,27 @@ export default function VoiceRecorder() {
     }
   };
 
+  const handleVoiceResult = useCallback((text: string, isFinal: boolean) => {
+    setTranscript(text);
+    
+    // Auto-process when speech is final and contains enough content
+    if (isFinal && text.length > 5) {
+      setTimeout(() => {
+        processInput(text);
+      }, 500); // Small delay to ensure recognition is complete
+    }
+  }, []);
+
+  const { isListening, startListening, stopListening, isSupported, error } = useVoiceRecognition({
+    onResult: handleVoiceResult,
+    lang: settings.voiceLanguage || 'en-US',
+    continuous: false,
+    interimResults: true,
+  });
+
   const handleManualSubmit = () => {
     if (transcript.trim()) {
-      handleAutoProcess(transcript);
+      processInput(transcript);
     }
   };
 
