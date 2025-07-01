@@ -105,8 +105,8 @@ export default function DiaryCalendar() {
           </div>
           
           <div className="grid grid-cols-7 gap-1 mb-4">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+              <div key={`${day}-${index}`} className="text-center text-xs font-medium text-muted-foreground py-2">
                 {day}
               </div>
             ))}

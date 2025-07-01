@@ -5,6 +5,7 @@ import KanbanBoard from "@/components/kanban-board";
 import TimetableManager from "@/components/timetable-manager";
 import Navigation from "@/components/navigation";
 import { Mic, Settings, Bell } from "lucide-react";
+import { Link } from "wouter";
 
 type Tab = 'diary' | 'tasks' | 'schedule';
 
@@ -24,9 +25,11 @@ export default function Home() {
               <h1 className="text-xl font-bold text-foreground">Voice Mate</h1>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="w-8 h-8 bg-primary rounded-full flex items-center justify-center border-2 border-border hover:bg-accent transition-colors">
-                <Settings className="text-secondary w-4 h-4" />
-              </button>
+              <Link href="/settings">
+                <button className="w-8 h-8 bg-primary rounded-full flex items-center justify-center border-2 border-border hover:bg-accent transition-colors">
+                  <Settings className="text-secondary w-4 h-4" />
+                </button>
+              </Link>
               <button className="w-8 h-8 bg-accent rounded-full flex items-center justify-center border-2 border-border">
                 <Bell className="text-accent-foreground w-4 h-4" />
               </button>

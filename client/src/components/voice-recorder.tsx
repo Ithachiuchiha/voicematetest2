@@ -5,6 +5,7 @@ import { useVoiceRecognition } from "@/hooks/use-voice-recognition";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { localStorageManager } from "@/lib/local-storage";
 import { Mic, MicOff } from "lucide-react";
 import type { InsertDiaryEntry, InsertTask } from "@shared/schema";
 
@@ -12,8 +13,10 @@ export default function VoiceRecorder() {
   const [transcript, setTranscript] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const settings = localStorageManager.getSettings();
   const { isListening, startListening, stopListening, isSupported } = useVoiceRecognition({
     onResult: setTranscript,
+    lang: settings.voiceLanguage,
   });
 
   const saveDiaryMutation = useMutation({
