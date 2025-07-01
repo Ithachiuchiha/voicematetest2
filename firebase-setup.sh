@@ -108,14 +108,38 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "🎉 Your Voice Mate app is now live!"
     echo ""
+    
+    # Get project ID and show URLs
+    PROJECT_ID=$(cat .firebaserc 2>/dev/null | grep -o '"default": "[^"]*"' | cut -d'"' -f4)
+    if [ ! -z "$PROJECT_ID" ]; then
+        echo "Your app URLs:"
+        echo "📱 Web App: https://$PROJECT_ID.web.app"
+        echo "🔧 Functions: https://us-central1-$PROJECT_ID.cloudfunctions.net/api"
+        echo ""
+    fi
+    
     echo "Next steps:"
-    echo "1. Open Firebase Console to get your live URL"
-    echo "2. Test all features on the live site"
-    echo "3. Share your app with others!"
+    echo "1. Test your app at the URL above"
+    echo "2. Try creating tasks and diary entries"
+    echo "3. If something doesn't work, run: bash test-firebase-api.sh"
+    echo "4. Check logs with: firebase functions:log --only api"
     echo ""
-    echo "To get your URLs:"
-    echo "firebase hosting:channel:list"
+    
+    # Test the deployment
+    print_status "Testing API endpoints..."
+    if [ ! -z "$PROJECT_ID" ]; then
+        echo "Running quick API test..."
+        chmod +x test-firebase-api.sh
+        ./test-firebase-api.sh
+    fi
+    
 else
     print_error "Deployment failed"
+    echo ""
+    echo "Troubleshooting steps:"
+    echo "1. Check your internet connection"
+    echo "2. Verify Firebase login: firebase login"
+    echo "3. Try deploying functions only: firebase deploy --only functions"
+    echo "4. Check the troubleshooting guide: FIREBASE_TROUBLESHOOTING.md"
     exit 1
 fi
