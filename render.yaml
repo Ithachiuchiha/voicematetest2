@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: voice-mate-app
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:[YOUR-PASSWORD]@db.iyrsvlmnhqvwnbeifdqi.supabase.co:5432/postgres
+      - key: NODE_ENV
+        value: production
