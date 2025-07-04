@@ -127,22 +127,59 @@ services:
   - type: web
     name: voice-mate-app
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    plan: free
+    region: oregon
+    buildCommand: cd dist && npm install --production
+    startCommand: cd dist && node index.js
     envVars:
       - key: DATABASE_URL
         value: $DATABASE_URL
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
+    autoDeploy: false
 EOF
         
-        print_success "Created render.yaml configuration"
+        # Create a production package.json for the dist folder
+        cat > dist/package.json << EOF
+{
+  "name": "voice-mate-production",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0",
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^9.0.1",
+    "drizzle-orm": "^0.30.0",
+    "express": "^4.19.0",
+    "express-rate-limit": "^7.2.0",
+    "express-session": "^1.18.0",
+    "memorystore": "^1.6.7",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
+  }
+}
+EOF
+        
+        print_success "Created render.yaml and production package.json"
+        print_success "Updated deployment configuration for Render"
         echo ""
-        echo "Next steps for Render:"
-        echo "1. Go to render.com and sign up"
-        echo "2. Connect your GitHub repository"
-        echo "3. The render.yaml file will configure everything automatically"
-        echo "4. Your DATABASE_URL is already set in the config"
+        echo "✅ Render deployment ready!"
+        echo ""
+        echo "Next steps:"
+        echo "1. Go to render.com and create account"
+        echo "2. Click 'New +' → 'Web Service'"
+        echo "3. Connect your GitHub repository"
+        echo "4. Render will automatically use the render.yaml configuration"
+        echo "5. Your DATABASE_URL is already configured"
+        echo ""
+        echo "Your app will deploy from the 'dist/' folder with optimized settings!"
         ;;
         
     "replit")
