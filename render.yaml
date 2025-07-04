@@ -7,7 +7,7 @@ services:
     buildCommand: cd dist && npm install --production
     startCommand: cd dist && node index.js
     envVars:
-      - key: DATABASE_URL
+      - key: postgresql://postgres:[YOUR-PASSWORD]@db.iyrsvlmnhqvwnbeifdqi.supabase.co:5432/postgres
         value: postgresql://neondb_owner:npg_UPOIa6vWEU0A@ep-wild-poetry-a5j6rgqh.us-east-2.aws.neon.tech/neondb?sslmode=require
       - key: NODE_ENV
         value: production
