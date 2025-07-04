@@ -2,10 +2,15 @@ services:
   - type: web
     name: voice-mate-app
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    plan: free
+    region: oregon
+    buildCommand: cd dist && npm install --production
+    startCommand: cd dist && node index.js
     envVars:
       - key: DATABASE_URL
         value: postgresql://postgres:[YOUR-PASSWORD]@db.iyrsvlmnhqvwnbeifdqi.supabase.co:5432/postgres
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
+    autoDeploy: false
