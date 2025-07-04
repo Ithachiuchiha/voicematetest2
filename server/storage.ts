@@ -1,4 +1,6 @@
 import { diaryEntries, tasks, scheduleItems, type DiaryEntry, type InsertDiaryEntry, type Task, type InsertTask, type ScheduleItem, type InsertScheduleItem } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Diary operations
@@ -127,4 +129,76 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database-backed storage implementation
+export class DatabaseStorage implements IStorage {
+  async getDiaryEntriesByDate(date: string): Promise<DiaryEntry[]> {
+    const entries = await db.select().from(diaryEntries).where(eq(diaryEntries.date, date));
+    return entries.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }
+
+  async createDiaryEntry(entry: InsertDiaryEntry): Promise<DiaryEntry> {
+    const [newEntry] = await db
+      .insert(diaryEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  async deleteDiaryEntry(id: number): Promise<void> {
+    await db.delete(diaryEntries).where(eq(diaryEntries.id, id));
+  }
+
+  async getAllTasks(): Promise<Task[]> {
+    const allTasks = await db.select().from(tasks);
+    return allTasks.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [newTask] = await db
+      .insert(tasks)
+      .values(task)
+      .returning();
+    return newTask;
+  }
+
+  async updateTask(id: number, updates: Partial<Task>): Promise<Task> {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set(updates)
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask;
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async getAllScheduleItems(): Promise<ScheduleItem[]> {
+    const items = await db.select().from(scheduleItems);
+    return items.filter(item => item.isActive);
+  }
+
+  async createScheduleItem(item: InsertScheduleItem): Promise<ScheduleItem> {
+    const [newItem] = await db
+      .insert(scheduleItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+
+  async updateScheduleItem(id: number, updates: Partial<ScheduleItem>): Promise<ScheduleItem> {
+    const [updatedItem] = await db
+      .update(scheduleItems)
+      .set(updates)
+      .where(eq(scheduleItems.id, id))
+      .returning();
+    return updatedItem;
+  }
+
+  async deleteScheduleItem(id: number): Promise<void> {
+    await db.delete(scheduleItems).where(eq(scheduleItems.id, id));
+  }
+}
+
+export const storage = new DatabaseStorage();
