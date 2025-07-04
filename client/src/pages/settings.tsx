@@ -88,7 +88,7 @@ export default function Settings() {
       });
     } else {
       // Play default browser notification sound
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0L');
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5/CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0LFHC37tuJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwUDFCp5+CrVQ0L');
       audio.play().catch(() => {
         toast({
           title: "Cannot play sound",
@@ -168,7 +168,7 @@ export default function Settings() {
       </header>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
-        
+
         {/* Notifications */}
         <Card className="border-2 border-border">
           <CardHeader className="pb-3">
@@ -186,7 +186,7 @@ export default function Settings() {
                 onCheckedChange={(checked) => handleSettingChange('notificationsEnabled', checked)}
               />
             </div>
-            
+
             {permission !== 'granted' && (
               <Button 
                 onClick={handleNotificationPermission}
@@ -204,7 +204,7 @@ export default function Settings() {
                 <Volume2 className="w-4 h-4" />
                 <span>Custom Notification Sound</span>
               </Label>
-              
+
               <div className="flex space-x-2">
                 <Button
                   onClick={() => document.getElementById('sound-upload')?.click()}
@@ -222,7 +222,7 @@ export default function Settings() {
                   <Volume2 className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               <input
                 id="sound-upload"
                 type="file"
@@ -230,7 +230,7 @@ export default function Settings() {
                 onChange={handleSoundUpload}
                 className="hidden"
               />
-              
+
               {customSound && (
                 <p className="text-xs text-muted-foreground">
                   Custom sound uploaded ✓
@@ -317,7 +317,7 @@ export default function Settings() {
                 <Download className="w-4 h-4" />
                 <span>Export</span>
               </Button>
-              
+
               <Button
                 onClick={() => document.getElementById('data-import')?.click()}
                 variant="outline"
@@ -327,7 +327,7 @@ export default function Settings() {
                 <span>Import</span>
               </Button>
             </div>
-            
+
             <input
               id="data-import"
               type="file"

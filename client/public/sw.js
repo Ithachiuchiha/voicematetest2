@@ -65,17 +65,24 @@ self.addEventListener('push', (event) => {
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
-        primaryKey: data.primaryKey || '1'
+        primaryKey: data.primaryKey || '1',
+        taskId: data.taskId,
+        scheduleId: data.scheduleId
       },
       actions: [
         {
-          action: 'explore',
-          title: 'Open Voice Mate',
+          action: 'complete',
+          title: 'Mark as Done',
           icon: '/icon-192x192.png'
         },
         {
-          action: 'close',
-          title: 'Close notification',
+          action: 'snooze',
+          title: 'Remind in 10 min',
+          icon: '/icon-192x192.png'
+        },
+        {
+          action: 'open',
+          title: 'Open App',
           icon: '/icon-192x192.png'
         }
       ]
@@ -91,16 +98,26 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  if (event.action === 'explore') {
+  if (event.action === 'complete') {
+    // Mark task as complete
+    if (event.notification.data && event.notification.data.taskId) {
+      // This would typically make an API call to mark the task as complete
+      console.log('Task marked as complete:', event.notification.data.taskId);
+    }
+  } else if (event.action === 'snooze') {
+    // Reschedule notification for 10 minutes later
+    const snoozeTime = new Date();
+    snoozeTime.setMinutes(snoozeTime.getMinutes() + 10);
+    
+    setTimeout(() => {
+      self.registration.showNotification(event.notification.title, {
+        body: event.notification.body + ' (Snoozed)',
+        icon: '/icon-192x192.png',
+        vibrate: [100, 50, 100]
+      });
+    }, 10 * 60 * 1000); // 10 minutes
+  } else if (event.action === 'open' || !event.action) {
     // Open the app
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  } else if (event.action === 'close') {
-    // Just close the notification
-    event.notification.close();
-  } else {
-    // Default action - open the app
     event.waitUntil(
       clients.openWindow('/')
     );

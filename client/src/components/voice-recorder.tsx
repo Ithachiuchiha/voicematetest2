@@ -24,7 +24,7 @@ function detectTaskFromText(text: string): boolean {
 
 function extractTaskInfo(text: string): { title: string; description?: string; priority: 'low' | 'medium' | 'high' } {
   const lowerText = text.toLowerCase();
-  
+
   // Determine priority based on keywords
   let priority: 'low' | 'medium' | 'high' = 'medium';
   if (lowerText.includes('urgent') || lowerText.includes('asap') || lowerText.includes('immediately')) {
@@ -36,7 +36,7 @@ function extractTaskInfo(text: string): { title: string; description?: string; p
   // Extract title (first sentence or up to 50 characters)
   const sentences = text.split(/[.!?]+/);
   const title = sentences[0].trim();
-  
+
   // Use remaining text as description if available
   const description = sentences.length > 1 ? sentences.slice(1).join('. ').trim() : undefined;
 
@@ -77,9 +77,18 @@ export default function VoiceRecorder() {
       const response = await apiRequest("POST", "/api/tasks", task);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task created!" });
+
+      // Schedule notification if task has deadline or is medicine-related
+      if (data && (data.dueDate || transcript.toLowerCase().includes('medicine'))) {
+        scheduleTaskNotification(data);
+      }
+
+      toast({
+        title: "Task created!",
+        description: "Your task has been saved successfully.",
+      });
     },
     onError: () => {
       toast({ 
@@ -91,9 +100,9 @@ export default function VoiceRecorder() {
 
   const processInput = async (text: string) => {
     if (!text.trim()) return;
-    
+
     setIsProcessing(true);
-    
+
     try {
       if (detectTaskFromText(text)) {
         // Create task
@@ -122,7 +131,7 @@ export default function VoiceRecorder() {
           description: "Your thoughts have been recorded" 
         });
       }
-      
+
       setTranscript("");
     } catch (error) {
       console.error('Auto-process error:', error);
@@ -133,7 +142,7 @@ export default function VoiceRecorder() {
 
   const handleVoiceResult = useCallback((text: string, isFinal: boolean) => {
     setTranscript(text);
-    
+
     // Auto-process when speech is final and contains enough content
     if (isFinal && text.length > 5) {
       setTimeout(() => {
@@ -174,6 +183,40 @@ export default function VoiceRecorder() {
 
   const isTaskMode = transcript && detectTaskFromText(transcript);
 
+  // Function to schedule notification
+  const scheduleTaskNotification = async (task: any) => {
+    if (!('Notification' in window)) {
+      console.warn('This browser does not support notifications.');
+      return;
+    }
+
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('Notification permission not granted.');
+        return;
+      }
+    }
+
+    // Basic example: schedule for 1 minute from now
+    const now = Date.now();
+    const delay = 60 * 1000;
+    const notificationTime = now + delay;
+
+    const registration = await navigator.serviceWorker.ready;
+    if (registration) {
+      registration.showNotification('Task Reminder', {
+        body: task.title,
+        icon: '/icon.png',
+        tag: 'task-reminder',
+        timestamp: notificationTime,
+        data: {
+          url: 'https://your-app-url.com/tasks/' + task.id // Replace with your actual URL
+        }
+      });
+    }
+  };
+
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-lg border-2">
       <CardContent className="p-6">
@@ -210,17 +253,17 @@ export default function VoiceRecorder() {
                   <Mic className="w-6 h-6" />
                 )}
               </Button>
-              
+
               <p className="text-sm text-muted-foreground">
                 {isListening ? 'Listening... Speak now' : 'Click to start speaking'}
               </p>
-              
+
               {!isSupported && (
                 <p className="text-sm text-destructive">
                   Voice recognition not supported in this browser
                 </p>
               )}
-              
+
               {error && (
                 <p className="text-sm text-destructive">{error}</p>
               )}
@@ -271,7 +314,7 @@ export default function VoiceRecorder() {
                 </div>
                 <p className="text-sm leading-relaxed">{transcript}</p>
               </div>
-              
+
               {inputMode === 'voice' && (
                 <p className="text-xs text-center text-muted-foreground">
                   {isTaskMode 
@@ -297,3 +340,4 @@ export default function VoiceRecorder() {
     </Card>
   );
 }
+```
