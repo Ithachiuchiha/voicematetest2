@@ -24,13 +24,10 @@ Voice Mate is a Progressive Web App that combines voice diary, task management, 
 - **API**: RESTful API with JSON responses
 
 ### Data Storage Solutions
-- **Development**: In-memory storage using Maps
-- **Production Ready**: Drizzle ORM configured for PostgreSQL
+- **Database**: Supabase PostgreSQL (only supported database)
+- **ORM**: Drizzle ORM with Supabase connection
 - **Local Storage**: Browser localStorage for offline functionality
-- **Database Options**: 
-  - Supabase (PostgreSQL) - Recommended for free deployment
-  - Neon Database (PostgreSQL) with connection pooling
-  - Firebase (requires payment for functions)
+- **Connection**: Direct Supabase connection pooling
 
 ## Key Components
 
