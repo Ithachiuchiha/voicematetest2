@@ -38,16 +38,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    const db = getDb();
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    const db = getDb();
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
   async createUser(user: InsertUser): Promise<User> {
+    const db = getDb();
     const [newUser] = await db
       .insert(users)
       .values(user)
@@ -56,6 +59,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
+    const db = getDb();
     await db
       .update(users)
       .set({ password: hashedPassword })
@@ -64,12 +68,14 @@ export class DatabaseStorage implements IStorage {
 
   // Diary operations
   async getDiaryEntriesByDate(userId: number, date: string): Promise<DiaryEntry[]> {
+    const db = getDb();
     const entries = await db.select().from(diaryEntries)
       .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.date, date)));
     return entries.sort((a: DiaryEntry, b: DiaryEntry) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }
 
   async createDiaryEntry(userId: number, entry: InsertDiaryEntry): Promise<DiaryEntry> {
+    const db = getDb();
     const [newEntry] = await db
       .insert(diaryEntries)
       .values({ ...entry, userId })
@@ -78,17 +84,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDiaryEntry(userId: number, id: number): Promise<void> {
+    const db = getDb();
     await db.delete(diaryEntries)
       .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, userId)));
   }
 
   // Task operations
   async getAllTasks(userId: number): Promise<Task[]> {
+    const db = getDb();
     const allTasks = await db.select().from(tasks).where(eq(tasks.userId, userId));
     return allTasks.sort((a: Task, b: Task) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 
   async createTask(userId: number, task: InsertTask): Promise<Task> {
+    const db = getDb();
     const [newTask] = await db
       .insert(tasks)
       .values({ ...task, userId })
@@ -97,6 +106,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTask(userId: number, id: number, updates: Partial<Task>): Promise<Task> {
+    const db = getDb();
     const [updatedTask] = await db
       .update(tasks)
       .set(updates)
@@ -106,18 +116,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTask(userId: number, id: number): Promise<void> {
+    const db = getDb();
     await db.delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
   }
 
   // Schedule operations
   async getAllScheduleItems(userId: number): Promise<ScheduleItem[]> {
+    const db = getDb();
     const items = await db.select().from(scheduleItems)
       .where(and(eq(scheduleItems.userId, userId), eq(scheduleItems.isActive, true)));
     return items;
   }
 
   async createScheduleItem(userId: number, item: InsertScheduleItem): Promise<ScheduleItem> {
+    const db = getDb();
     const [newItem] = await db
       .insert(scheduleItems)
       .values({ ...item, userId })
@@ -126,6 +139,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateScheduleItem(userId: number, id: number, updates: Partial<ScheduleItem>): Promise<ScheduleItem> {
+    const db = getDb();
     const [updatedItem] = await db
       .update(scheduleItems)
       .set(updates)
@@ -135,6 +149,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteScheduleItem(userId: number, id: number): Promise<void> {
+    const db = getDb();
     await db.delete(scheduleItems)
       .where(and(eq(scheduleItems.id, id), eq(scheduleItems.userId, userId)));
   }
