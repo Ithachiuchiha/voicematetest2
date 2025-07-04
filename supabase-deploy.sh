@@ -26,26 +26,41 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Step 1: Ask user for Supabase DATABASE_URL
+# Step 1: Use existing DATABASE_URL or ask for new one
 echo ""
-echo "First, you need to get your DATABASE_URL from Supabase:"
-echo "1. Go to supabase.com and create a free account"
-echo "2. Create a new project called 'voice-mate-app'"
-echo "3. Go to Settings → Database"
-echo "4. Copy the 'Connection pooling' URL"
-echo "5. Replace [YOUR-PASSWORD] with your database password"
-echo ""
-echo "Example: postgresql://postgres.abc123:yourpassword@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
-echo ""
-
-read -p "Enter your Supabase DATABASE_URL: " DATABASE_URL
+if [ -n "$DATABASE_URL" ]; then
+    print_success "Using existing DATABASE_URL from environment"
+    echo "DATABASE_URL: ${DATABASE_URL:0:30}..."
+    echo ""
+    read -p "Use this DATABASE_URL? (y/n): " USE_EXISTING
+    if [ "$USE_EXISTING" = "n" ] || [ "$USE_EXISTING" = "N" ]; then
+        echo ""
+        echo "Please enter your new DATABASE_URL:"
+        echo "Examples:"
+        echo "- Supabase: postgresql://postgres.abc123:yourpassword@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+        echo "- Neon: postgresql://username:password@ep-host.neon.tech/dbname"
+        echo ""
+        read -p "Enter your DATABASE_URL: " DATABASE_URL
+    fi
+else
+    echo "First, you need to get your DATABASE_URL from Supabase:"
+    echo "1. Go to supabase.com and create a free account"
+    echo "2. Create a new project called 'voice-mate-app'"
+    echo "3. Go to Settings → Database"
+    echo "4. Copy the 'Connection pooling' URL"
+    echo "5. Replace [YOUR-PASSWORD] with your database password"
+    echo ""
+    echo "Example: postgresql://postgres.abc123:yourpassword@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+    echo ""
+    read -p "Enter your DATABASE_URL: " DATABASE_URL
+fi
 
 if [ -z "$DATABASE_URL" ]; then
-    print_error "DATABASE_URL is required. Please get it from your Supabase dashboard."
+    print_error "DATABASE_URL is required. Please get it from your database provider."
     exit 1
 fi
 
-print_success "DATABASE_URL received"
+print_success "DATABASE_URL configured"
 
 # Step 2: Choose deployment platform
 echo ""

@@ -1,5 +1,5 @@
 import { users, diaryEntries, tasks, scheduleItems, type User, type InsertUser, type DiaryEntry, type InsertDiaryEntry, type Task, type InsertTask, type ScheduleItem, type InsertScheduleItem } from "@shared/schema";
-import { db } from "./db";
+import { getDb } from "./db";
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
@@ -32,6 +32,7 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
+    const db = getDb();
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
