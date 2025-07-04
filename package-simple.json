@@ -1,0 +1,11 @@
+{
+  "name": "voice-mate-production",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build --mode production",
+    "build:backend": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --target=node20",
+    "build:frontend": "vite build --mode production --outDir=dist/public",
+    "start": "NODE_ENV=production node dist/index.js"
+  }
+}
