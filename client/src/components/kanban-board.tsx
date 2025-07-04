@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
-import { Plus } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Task, InsertTask } from "@shared/schema";
 import { z } from "zod";
 
@@ -55,6 +57,20 @@ export default function KanbanBoard() {
     },
     onError: () => {
       toast({ title: "Failed to update task", variant: "destructive" });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await apiRequest("DELETE", `/api/tasks/${taskId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Task deleted successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete task", variant: "destructive" });
     },
   });
 
@@ -244,11 +260,48 @@ export default function KanbanBoard() {
                           key={task.id}
                           className={`border-2 border-border rounded-lg p-3 cursor-pointer hover:shadow-sm transition-shadow ${column.bgColor}`}
                         >
-                          <h4 className={`font-medium text-foreground text-sm mb-1 ${
-                            task.status === 'completed' ? 'line-through' : ''
-                          }`}>
-                            {task.title}
-                          </h4>
+                          <div className="flex items-start justify-between mb-1">
+                            <h4 className={`font-medium text-foreground text-sm ${
+                              task.status === 'completed' ? 'line-through' : ''
+                            }`}>
+                              {task.title}
+                            </h4>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-auto p-1 -mt-1 -mr-1">
+                                  <MoreHorizontal className="w-3 h-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                      <Trash2 className="w-3 h-3 mr-2" />
+                                      Delete Task
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Task</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{task.title}"? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteTaskMutation.mutate(task.id)}
+                                        disabled={deleteTaskMutation.isPending}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        {deleteTaskMutation.isPending ? "Deleting..." : "Delete"}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                           {task.description && (
                             <p className="text-xs text-muted-foreground mb-2">
                               {task.description}

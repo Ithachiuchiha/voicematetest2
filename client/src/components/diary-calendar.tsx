@@ -1,13 +1,19 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChevronLeft, ChevronRight, MoreHorizontal, Trash2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { DiaryEntry } from "@shared/schema";
 
 export default function DiaryCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: entries = [], isLoading } = useQuery<DiaryEntry[]>({
     queryKey: ["/api/diary", selectedDate],
@@ -17,6 +23,20 @@ export default function DiaryCalendar() {
         throw new Error('Failed to fetch diary entries');
       }
       return response.json();
+    },
+  });
+
+  const deleteDiaryMutation = useMutation({
+    mutationFn: async (entryId: number) => {
+      const response = await apiRequest("DELETE", `/api/diary/${entryId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/diary", selectedDate] });
+      toast({ title: "Diary entry deleted successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete diary entry", variant: "destructive" });
     },
   });
 
@@ -160,9 +180,41 @@ export default function DiaryCalendar() {
                     <span className="text-xs text-muted-foreground">
                       {formatTime(entry.timestamp)}
                     </span>
-                    <Button variant="ghost" size="sm" className="h-auto p-1">
-                      <MoreHorizontal className="w-3 h-3" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-auto p-1">
+                          <MoreHorizontal className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <Trash2 className="w-3 h-3 mr-2" />
+                              Delete Entry
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Diary Entry</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this diary entry? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteDiaryMutation.mutate(entry.id)}
+                                disabled={deleteDiaryMutation.isPending}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deleteDiaryMutation.isPending ? "Deleting..." : "Delete"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <p className="text-foreground text-sm leading-relaxed">
                     {entry.content}
