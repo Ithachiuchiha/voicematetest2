@@ -209,9 +209,8 @@ export default function VoiceRecorder() {
         body: task.title,
         icon: '/icon.png',
         tag: 'task-reminder',
-        timestamp: notificationTime,
         data: {
-          url: 'https://your-app-url.com/tasks/' + task.id // Replace with your actual URL
+          url: `https://your-app-url.com/tasks/${task.id}` // Replace with your actual URL
         }
       });
     }
@@ -340,4 +339,3 @@ export default function VoiceRecorder() {
     </Card>
   );
 }
-```
