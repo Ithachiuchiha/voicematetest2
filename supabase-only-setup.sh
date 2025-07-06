@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Voice Mate - Supabase Only Setup
-# Clean setup with only Supabase, no other database providers
+# Voice Mate - Simple Development Setup
+# Ready to run with existing database connection
 
 echo "🎯 Voice Mate - Supabase Only Setup"
 echo "==================================="

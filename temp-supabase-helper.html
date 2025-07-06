@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Find Your Supabase Database URL</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 2px solid #ddd; border-radius: 8px; }
+        .current { background: #ffe6e6; border-color: #ff4444; }
+        .correct { background: #e6ffe6; border-color: #44ff44; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+        .big-warning { color: red; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Find Your Supabase Database Connection String</h1>
+    
+    <div class="step current">
+        <h2>❌ What You're Currently Giving Me:</h2>
+        <code>https://iyrsvlmnhqvwnbeifdqi.supabase.co</code>
+        <p><strong>This is your PROJECT URL (dashboard link)</strong></p>
+    </div>
+
+    <div class="step correct">
+        <h2>✅ What I Need Instead:</h2>
+        <code>postgresql://postgres.iyrsvlmnhqvwnbeifdqi:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres</code>
+        <p><strong>This is your DATABASE CONNECTION STRING</strong></p>
+    </div>
+
+    <div class="step">
+        <h2>📋 Exact Steps:</h2>
+        <ol>
+            <li><strong>Open your Supabase project:</strong> https://iyrsvlmnhqvwnbeifdqi.supabase.co</li>
+            <li><strong>Look at the LEFT sidebar</strong> - find the ⚙️ Settings icon at the BOTTOM</li>
+            <li><strong>Click Settings</strong> → then click <strong>"Database"</strong></li>
+            <li><strong>Scroll down</strong> until you see <strong>"Connection string"</strong></li>
+            <li><strong>Click the "Connection pooling" tab</strong> (NOT "Direct connection")</li>
+            <li><strong>Copy the URL that starts with</strong> <code>postgresql://</code></li>
+            <li><strong>Replace [YOUR-PASSWORD]</strong> with your actual database password</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2 class="big-warning">🚨 Key Differences:</h2>
+        <table border="1" cellpadding="10">
+            <tr>
+                <th>Project URL (WRONG)</th>
+                <th>Database URL (CORRECT)</th>
+            </tr>
+            <tr>
+                <td>Starts with <code>https://</code></td>
+                <td>Starts with <code>postgresql://</code></td>
+            </tr>
+            <tr>
+                <td>Ends with <code>.supabase.co</code></td>
+                <td>Contains <code>pooler.supabase.com</code></td>
+            </tr>
+            <tr>
+                <td>Opens dashboard</td>
+                <td>Connects to database</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="step">
+        <h2>🔍 What to Look For:</h2>
+        <p>Your database URL should look EXACTLY like this format:</p>
+        <code>postgresql://postgres.iyrsvlmnhqvwnbeifdqi:your_real_password@aws-0-us-east-1.pooler.supabase.com:6543/postgres</code>
+    </div>
+
+</body>
+</html>

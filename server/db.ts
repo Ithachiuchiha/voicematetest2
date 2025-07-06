@@ -21,16 +21,16 @@ let pool: Pool | null = null;
 let db: ReturnType<typeof drizzle> | null = null;
 
 async function initializeDatabase() {
-  // Validate Supabase configuration first
+  // Validate database configuration first
   validateConfig();
   
   const config = getAppConfig();
   
   if (config.supabase) {
     try {
-      console.log('[DB] Connecting to Supabase...');
+      console.log('[DB] Connecting to PostgreSQL database...');
       
-      // Create Supabase connection pool
+      // Create database connection pool
       pool = new Pool({ 
         connectionString: config.supabase.url,
         max: 10,
@@ -40,29 +40,29 @@ async function initializeDatabase() {
       
       db = drizzle({ client: pool, schema });
       
-      // Test the Supabase connection
-      console.log('[DB] Testing Supabase connection...');
+      // Test the database connection
+      console.log('[DB] Testing database connection...');
       await testDatabaseConnection();
       
-      console.log('[DB] ✅ Supabase connected successfully');
+      console.log('[DB] ✅ Database connected successfully');
     } catch (error) {
-      console.error('[DB] ❌ Failed to connect to Supabase:', error);
+      console.error('[DB] ❌ Failed to connect to database:', error);
       console.error('[DB] Please check:');
-      console.error('[DB] 1. Your Supabase DATABASE_URL is correct');
-      console.error('[DB] 2. Your Supabase project is active');
-      console.error('[DB] 3. Network connectivity to Supabase');
+      console.error('[DB] 1. Your DATABASE_URL is correct');
+      console.error('[DB] 2. Your database is active and accessible');
+      console.error('[DB] 3. Network connectivity');
       
       // In development, continue without database
       if (process.env.NODE_ENV === 'development') {
-        console.warn('[DB] ⚠️  Continuing without Supabase in development mode');
+        console.warn('[DB] ⚠️  Continuing without database in development mode');
         pool = null;
         db = null;
       } else {
-        throw new Error(`Supabase connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(`Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   } else {
-    console.warn('[DB] ⚠️  No Supabase configuration - app will run without persistent storage');
+    console.warn('[DB] ⚠️  No database configuration - app will run without persistent storage');
   }
 }
 

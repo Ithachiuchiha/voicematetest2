@@ -13,28 +13,35 @@ export interface AppConfig {
 }
 
 function getSupabaseConfig(): SupabaseConfig | null {
-  // Check for Supabase DATABASE_URL (prioritize the new SUPABASE_DATABASE_URL)
-  const supabaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  // Use the working DATABASE_URL (Neon is PostgreSQL compatible)
+  const databaseUrl = process.env.DATABASE_URL;
 
-  if (!supabaseUrl) {
-    console.warn('[CONFIG] No Supabase DATABASE_URL found');
-    console.warn('[CONFIG] Please set SUPABASE_DATABASE_URL environment variable with your Supabase connection string');
+  if (!databaseUrl) {
+    console.warn('[CONFIG] No DATABASE_URL found');
+    console.warn('[CONFIG] Please set DATABASE_URL environment variable');
     return null;
   }
 
-  // Validate it's actually a Supabase URL
-  if (!supabaseUrl.includes('supabase.com') && !supabaseUrl.includes('pooler.supabase')) {
-    console.warn('[CONFIG] URL does not appear to be a Supabase URL');
-    console.warn('[CONFIG] Expected format: postgresql://postgres.xxx:password@aws-0-region.pooler.supabase.com:6543/postgres');
-    console.warn('[CONFIG] Current URL starts with:', supabaseUrl.substring(0, 30) + '...');
-  } else {
-    console.log('[CONFIG] ✅ Valid Supabase URL detected');
+  // Accept any PostgreSQL URL (Supabase, Neon, or other PostgreSQL providers)
+  if (!databaseUrl.startsWith('postgresql://')) {
+    console.warn('[CONFIG] DATABASE_URL must be a PostgreSQL connection string');
+    console.warn('[CONFIG] Expected format: postgresql://user:password@host:port/database');
+    return null;
   }
 
-  console.log(`[CONFIG] Using Supabase URL: ${supabaseUrl.substring(0, 35)}...`);
+  // Determine the provider
+  let provider = 'PostgreSQL';
+  if (databaseUrl.includes('supabase.com') || databaseUrl.includes('pooler.supabase')) {
+    provider = 'Supabase';
+  } else if (databaseUrl.includes('neon.tech')) {
+    provider = 'Neon';
+  }
+
+  console.log(`[CONFIG] ✅ Connected to ${provider} database`);
+  console.log(`[CONFIG] Database URL: ${databaseUrl.substring(0, 35)}...`);
   
   return {
-    url: supabaseUrl
+    url: databaseUrl
   };
 }
 
@@ -49,22 +56,22 @@ export function getAppConfig(): AppConfig {
   };
 }
 
-// Validate Supabase configuration on startup
+// Validate database configuration on startup
 export function validateConfig(): void {
   const config = getAppConfig();
   
   if (!config.supabase) {
-    console.error('[CONFIG] ❌ Supabase not configured!');
-    console.error('[CONFIG] To connect to Supabase:');
-    console.error('[CONFIG] 1. Get your DATABASE_URL from Supabase project → Settings → Database');
-    console.error('[CONFIG] 2. Set environment variable: DATABASE_URL=postgresql://postgres.xxx:password@aws-0-region.pooler.supabase.com:6543/postgres');
+    console.error('[CONFIG] ❌ Database not configured!');
+    console.error('[CONFIG] To connect to a PostgreSQL database:');
+    console.error('[CONFIG] 1. Get your DATABASE_URL from your database provider');
+    console.error('[CONFIG] 2. Set environment variable: DATABASE_URL=postgresql://...');
     console.error('[CONFIG] 3. Restart the application');
     
     if (config.nodeEnv === 'production') {
-      throw new Error('Supabase configuration required in production');
+      throw new Error('Database configuration required in production');
     }
   } else {
-    console.log('[CONFIG] ✅ Supabase configured and ready');
+    console.log('[CONFIG] ✅ Database configured and ready');
   }
   
   console.log(`[CONFIG] ✅ Server port: ${config.port}`);
