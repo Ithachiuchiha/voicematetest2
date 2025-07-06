@@ -5,6 +5,11 @@ import { corsHandler, securityHeaders, setupCSP, requestSizeLimit } from "./secu
 
 const app = express();
 
+// Trust proxy for rate limiting in production environments
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Apply security middleware first
 app.use(corsHandler);
 app.use(securityHeaders);
