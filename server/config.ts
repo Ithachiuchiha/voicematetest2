@@ -13,21 +13,25 @@ export interface AppConfig {
 }
 
 function getSupabaseConfig(): SupabaseConfig | null {
-  // Only check for Supabase DATABASE_URL
-  const supabaseUrl = process.env.DATABASE_URL;
+  // Check for Supabase DATABASE_URL (prioritize the new SUPABASE_DATABASE_URL)
+  const supabaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 
   if (!supabaseUrl) {
     console.warn('[CONFIG] No Supabase DATABASE_URL found');
-    console.warn('[CONFIG] Please set DATABASE_URL environment variable with your Supabase connection string');
+    console.warn('[CONFIG] Please set SUPABASE_DATABASE_URL environment variable with your Supabase connection string');
     return null;
   }
 
+  // Validate it's actually a Supabase URL
   if (!supabaseUrl.includes('supabase.com') && !supabaseUrl.includes('pooler.supabase')) {
-    console.warn('[CONFIG] DATABASE_URL does not appear to be a Supabase URL');
+    console.warn('[CONFIG] URL does not appear to be a Supabase URL');
     console.warn('[CONFIG] Expected format: postgresql://postgres.xxx:password@aws-0-region.pooler.supabase.com:6543/postgres');
+    console.warn('[CONFIG] Current URL starts with:', supabaseUrl.substring(0, 30) + '...');
+  } else {
+    console.log('[CONFIG] ✅ Valid Supabase URL detected');
   }
 
-  console.log(`[CONFIG] Supabase URL configured: ${supabaseUrl.substring(0, 35)}...`);
+  console.log(`[CONFIG] Using Supabase URL: ${supabaseUrl.substring(0, 35)}...`);
   
   return {
     url: supabaseUrl

@@ -1,0 +1,76 @@
+You're encountering a common issue during deployment to **Render**: your app works in development (IDE) where you've provided the **Supabase Database URL** (or `.env` config), but after deploying to Render, it's **not using the correct Supabase URL** in production.
+
+---
+
+### 🔍 Likely Problem:
+
+Render is **not picking up your Supabase environment variables**, or the wrong ones are being used at runtime.
+
+When you **build locally**, it uses your `.env` file (like `.env.local` or `.env.development`). But on **Render**, unless you **manually configure your environment variables**, it has no idea what `SUPABASE_URL`, `SUPABASE_ANON_KEY`, etc. are.
+
+---
+
+### ✅ Solution: Add Your Supabase Environment Variables in Render
+
+#### 🔧 Step-by-step:
+
+1. **Login to Render Dashboard**
+
+2. Go to your deployed **Web Service**
+
+3. In the sidebar, go to **Environment > Environment Variables**
+
+4. Add the following variables (copy them from your `.env` file):
+
+   ```
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+
+   Optionally:
+
+   ```
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  // only if you're using Admin APIs
+   ```
+
+5. **Redeploy** your site after adding them.
+
+---
+
+### 🧠 Common Mistake to Avoid:
+
+* Do **not hardcode** the Supabase URL into your frontend or code files.
+* Always use `process.env.SUPABASE_URL` (or the appropriate variable based on your stack).
+
+---
+
+### 📦 If You're Using Next.js:
+
+Ensure you have:
+
+```js
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
+```
+
+And in Render, make sure those variables are **prefixed with `NEXT_PUBLIC_`** to expose them to the frontend.
+
+---
+
+### 🧪 Quick Test
+
+To confirm it's working on Render:
+
+* Add a temporary route like `/env-check` that logs `process.env.SUPABASE_URL` and test if it matches your Supabase project.
+
+---
+
+If you still face issues, please tell me:
+
+* What stack you're using (Next.js? Vite? CRA?)
+* How you're using Supabase (via `@supabase/supabase-js`?)
+* What exactly is the error on the deployed site?
+
+I'll guide you through debugging it precisely.
