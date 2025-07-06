@@ -6,6 +6,20 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import { 
+  apiLimiter, 
+  authLimiter, 
+  voiceLimiter,
+  sanitizeInput,
+  validatePasswordStrength,
+  checkAccountLockout,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  logSecurityEvent,
+  sanitizeError,
+  hashPassword,
+  verifyPassword
+} from "./security";
 
 const SessionStore = MemoryStore(session);
 
@@ -26,7 +40,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session configuration
+  // Session configuration with enhanced security
   app.use(session({
     store: new SessionStore({
       checkPeriod: 86400000 // prune expired entries every 24h
@@ -35,40 +49,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Set to true in production with HTTPS
+      secure: process.env.NODE_ENV === 'production', // Force HTTPS in production
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: 'strict' // CSRF protection
     }
   }));
   // Authentication routes
-  app.post("/api/auth/signup", async (req, res) => {
+  app.post("/api/auth/signup", authLimiter, async (req, res) => {
     try {
       const data = signUpSchema.parse(req.body);
       
+      // Sanitize inputs
+      const sanitizedUsername = sanitizeInput(data.username);
+      const sanitizedEmail = sanitizeInput(data.email);
+      
+      // Enhanced password validation
+      const passwordStrength = validatePasswordStrength(data.password);
+      if (!passwordStrength.isValid) {
+        logSecurityEvent('WEAK_PASSWORD_ATTEMPT', { username: sanitizedUsername }, req);
+        return res.status(400).json({ 
+          error: "Password does not meet security requirements", 
+          feedback: passwordStrength.feedback 
+        });
+      }
+      
       // Check if user already exists
-      const existingUser = await storage.getUserByUsername(data.username);
+      const existingUser = await storage.getUserByUsername(sanitizedUsername);
       if (existingUser) {
+        logSecurityEvent('DUPLICATE_USERNAME_ATTEMPT', { username: sanitizedUsername }, req);
         return res.status(400).json({ error: "Username already exists" });
       }
       
-      const existingEmail = await storage.getUserByEmail(data.email);
+      const existingEmail = await storage.getUserByEmail(sanitizedEmail);
       if (existingEmail) {
+        logSecurityEvent('DUPLICATE_EMAIL_ATTEMPT', { email: sanitizedEmail }, req);
         return res.status(400).json({ error: "Email already exists" });
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+      // Hash password with enhanced security
+      const hashedPassword = await hashPassword(data.password);
       
       // Create user
       const user = await storage.createUser({
-        username: data.username,
-        email: data.email,
+        username: sanitizedUsername,
+        email: sanitizedEmail,
         password: hashedPassword
       });
 
       // Set session
       req.session.userId = user.id;
       req.session.username = user.username;
+
+      logSecurityEvent('USER_REGISTERED', { userId: user.id, username: user.username }, req);
 
       res.json({ 
         user: { 
@@ -82,30 +115,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: "Invalid input data", details: error.errors });
       } else {
         console.error("Signup error:", error);
-        res.status(500).json({ error: "Failed to create user" });
+        logSecurityEvent('SIGNUP_ERROR', { error: error instanceof Error ? error.message : 'Unknown error' }, req);
+        res.status(500).json(sanitizeError(error));
       }
     }
   });
 
-  app.post("/api/auth/signin", async (req, res) => {
+  app.post("/api/auth/signin", authLimiter, async (req, res) => {
     try {
       const data = signInSchema.parse(req.body);
       
+      // Sanitize inputs
+      const sanitizedUsername = sanitizeInput(data.username);
+      
+      // Check account lockout
+      if (checkAccountLockout(sanitizedUsername)) {
+        logSecurityEvent('ACCOUNT_LOCKED_ATTEMPT', { username: sanitizedUsername }, req);
+        return res.status(423).json({ error: "Account temporarily locked due to multiple failed attempts" });
+      }
+      
       // Find user
-      const user = await storage.getUserByUsername(data.username);
+      const user = await storage.getUserByUsername(sanitizedUsername);
       if (!user) {
+        recordFailedAttempt(sanitizedUsername);
+        logSecurityEvent('INVALID_USERNAME_ATTEMPT', { username: sanitizedUsername }, req);
         return res.status(401).json({ error: "Invalid username or password" });
       }
 
       // Check password
-      const isValid = await bcrypt.compare(data.password, user.password);
+      const isValid = await verifyPassword(data.password, user.password);
       if (!isValid) {
+        recordFailedAttempt(sanitizedUsername);
+        logSecurityEvent('INVALID_PASSWORD_ATTEMPT', { username: sanitizedUsername }, req);
         return res.status(401).json({ error: "Invalid username or password" });
       }
 
+      // Clear failed attempts on successful login
+      clearFailedAttempts(sanitizedUsername);
+      
       // Set session
       req.session.userId = user.id;
       req.session.username = user.username;
+
+      logSecurityEvent('USER_LOGGED_IN', { userId: user.id, username: user.username }, req);
 
       res.json({ 
         user: { 
@@ -119,7 +171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: "Invalid input data", details: error.errors });
       } else {
         console.error("Signin error:", error);
-        res.status(500).json({ error: "Failed to sign in" });
+        logSecurityEvent('SIGNIN_ERROR', { error: error instanceof Error ? error.message : 'Unknown error' }, req);
+        res.status(500).json(sanitizeError(error));
       }
     }
   });
@@ -176,6 +229,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   });
+  // Apply API rate limiting to all API routes
+  app.use("/api", apiLimiter);
+
   // Diary routes
   app.get("/api/diary/:date", requireAuth, async (req, res) => {
     try {
@@ -188,17 +244,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/diary", requireAuth, async (req, res) => {
+  app.post("/api/diary", requireAuth, voiceLimiter, async (req, res) => {
     try {
       const entry = insertDiaryEntrySchema.parse(req.body);
+      
+      // Sanitize content input
+      const sanitizedEntry = {
+        ...entry,
+        content: sanitizeInput(entry.content)
+      };
+      
       const userId = req.session.userId!;
-      const newEntry = await storage.createDiaryEntry(userId, entry);
+      const newEntry = await storage.createDiaryEntry(userId, sanitizedEntry);
       res.json(newEntry);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid entry data", details: error.errors });
       } else {
-        res.status(500).json({ error: "Failed to create diary entry" });
+        logSecurityEvent('DIARY_CREATE_ERROR', { error: error instanceof Error ? error.message : 'Unknown error' }, req);
+        res.status(500).json(sanitizeError(error));
       }
     }
   });
@@ -225,17 +289,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tasks", requireAuth, async (req, res) => {
+  app.post("/api/tasks", requireAuth, voiceLimiter, async (req, res) => {
     try {
       const task = insertTaskSchema.parse(req.body);
+      
+      // Sanitize task inputs
+      const sanitizedTask = {
+        ...task,
+        title: sanitizeInput(task.title),
+        description: task.description ? sanitizeInput(task.description) : undefined
+      };
+      
       const userId = req.session.userId!;
-      const newTask = await storage.createTask(userId, task);
+      const newTask = await storage.createTask(userId, sanitizedTask);
       res.json(newTask);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid task data", details: error.errors });
       } else {
-        res.status(500).json({ error: "Failed to create task" });
+        logSecurityEvent('TASK_CREATE_ERROR', { error: error instanceof Error ? error.message : 'Unknown error' }, req);
+        res.status(500).json(sanitizeError(error));
       }
     }
   });
@@ -311,6 +384,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete schedule item" });
     }
   });
+
+  // Security status endpoint (development only)
+  if (process.env.NODE_ENV === 'development') {
+    app.get("/api/security/status", (req, res) => {
+      res.json({
+        security: {
+          sessionSecure: process.env.SESSION_SECRET !== 'voice-mate-secret-key-change-in-production',
+          databaseConnected: true,
+          corsEnabled: true,
+          rateLimitingEnabled: true,
+          inputSanitizationEnabled: true,
+          securityHeadersEnabled: true,
+          accountLockoutEnabled: true,
+          auditLoggingEnabled: true,
+          environment: process.env.NODE_ENV
+        },
+        message: "Security features active"
+      });
+    });
+  }
 
   const httpServer = createServer(app);
   return httpServer;

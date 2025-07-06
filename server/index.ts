@@ -1,10 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { corsHandler, securityHeaders, setupCSP, requestSizeLimit } from "./security";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Apply security middleware first
+app.use(corsHandler);
+app.use(securityHeaders);
+app.use(setupCSP);
+app.use(requestSizeLimit(2 * 1024 * 1024)); // 2MB limit
+
+// Parse JSON and URL-encoded bodies with size limits
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
