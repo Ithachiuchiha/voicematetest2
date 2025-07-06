@@ -13,35 +13,36 @@ export interface AppConfig {
 }
 
 function getSupabaseConfig(): SupabaseConfig | null {
-  // Use the working DATABASE_URL (Neon is PostgreSQL compatible)
-  const databaseUrl = process.env.DATABASE_URL;
+  // Only accept Supabase DATABASE_URL
+  const supabaseUrl = process.env.DATABASE_URL;
 
-  if (!databaseUrl) {
-    console.warn('[CONFIG] No DATABASE_URL found');
-    console.warn('[CONFIG] Please set DATABASE_URL environment variable');
+  if (!supabaseUrl) {
+    console.warn('[CONFIG] No Supabase DATABASE_URL found');
+    console.warn('[CONFIG] Please set DATABASE_URL with your Supabase connection string');
     return null;
   }
 
-  // Accept any PostgreSQL URL (Supabase, Neon, or other PostgreSQL providers)
-  if (!databaseUrl.startsWith('postgresql://')) {
-    console.warn('[CONFIG] DATABASE_URL must be a PostgreSQL connection string');
-    console.warn('[CONFIG] Expected format: postgresql://user:password@host:port/database');
+  // Validate it's a proper PostgreSQL connection string
+  if (!supabaseUrl.startsWith('postgresql://')) {
+    console.error('[CONFIG] ❌ DATABASE_URL must start with postgresql://');
+    console.error('[CONFIG] Expected: postgresql://postgres.xxx:password@aws-0-region.pooler.supabase.com:6543/postgres');
+    console.error('[CONFIG] You provided:', supabaseUrl.substring(0, 30) + '...');
     return null;
   }
 
-  // Determine the provider
-  let provider = 'PostgreSQL';
-  if (databaseUrl.includes('supabase.com') || databaseUrl.includes('pooler.supabase')) {
-    provider = 'Supabase';
-  } else if (databaseUrl.includes('neon.tech')) {
-    provider = 'Neon';
+  // Validate it's actually a Supabase URL
+  if (!supabaseUrl.includes('supabase.com') && !supabaseUrl.includes('pooler.supabase')) {
+    console.warn('[CONFIG] ⚠️  URL does not appear to be from Supabase');
+    console.warn('[CONFIG] Expected format: postgresql://postgres.xxx:password@aws-0-region.pooler.supabase.com:6543/postgres');
+    console.warn('[CONFIG] Current URL pattern:', supabaseUrl.substring(0, 50) + '...');
+    console.warn('[CONFIG] Proceeding anyway...');
   }
 
-  console.log(`[CONFIG] ✅ Connected to ${provider} database`);
-  console.log(`[CONFIG] Database URL: ${databaseUrl.substring(0, 35)}...`);
+  console.log('[CONFIG] ✅ Supabase URL configured');
+  console.log(`[CONFIG] Connection: ${supabaseUrl.substring(0, 35)}...`);
   
   return {
-    url: databaseUrl
+    url: supabaseUrl
   };
 }
 
@@ -56,22 +57,25 @@ export function getAppConfig(): AppConfig {
   };
 }
 
-// Validate database configuration on startup
+// Validate Supabase configuration on startup
 export function validateConfig(): void {
   const config = getAppConfig();
   
   if (!config.supabase) {
-    console.error('[CONFIG] ❌ Database not configured!');
-    console.error('[CONFIG] To connect to a PostgreSQL database:');
-    console.error('[CONFIG] 1. Get your DATABASE_URL from your database provider');
-    console.error('[CONFIG] 2. Set environment variable: DATABASE_URL=postgresql://...');
-    console.error('[CONFIG] 3. Restart the application');
+    console.error('[CONFIG] ❌ Supabase not configured!');
+    console.error('[CONFIG] To connect to Supabase:');
+    console.error('[CONFIG] 1. Go to your Supabase project dashboard');
+    console.error('[CONFIG] 2. Settings → Database → Connection string → Connection pooling');
+    console.error('[CONFIG] 3. Copy the PostgreSQL URL (starts with postgresql://)');
+    console.error('[CONFIG] 4. Replace [YOUR-PASSWORD] with your actual password');
+    console.error('[CONFIG] 5. Set DATABASE_URL environment variable');
+    console.error('[CONFIG] 6. Restart the application');
     
     if (config.nodeEnv === 'production') {
-      throw new Error('Database configuration required in production');
+      throw new Error('Supabase configuration required in production');
     }
   } else {
-    console.log('[CONFIG] ✅ Database configured and ready');
+    console.log('[CONFIG] ✅ Supabase configured and ready');
   }
   
   console.log(`[CONFIG] ✅ Server port: ${config.port}`);
