@@ -10,7 +10,7 @@ import { signUpSchema, signInSchema, forgotPasswordSchema } from "@shared/schema
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "lucide-react";
+import { User, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 import { z } from "zod";
 
 interface AuthDialogProps {
@@ -21,6 +21,8 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("signin");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -32,6 +34,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
       password: "",
       confirmPassword: "",
     },
+    mode: "onChange",
   });
 
   const signInForm = useForm<z.infer<typeof signInSchema>>({
@@ -40,6 +43,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
       username: "",
       password: "",
     },
+    mode: "onChange",
   });
 
   const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
@@ -48,6 +52,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
       username: "",
       email: "",
     },
+    mode: "onChange",
   });
 
   const signUpMutation = useMutation({
@@ -56,14 +61,18 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Account created successfully!" });
+      toast({ 
+        title: "✓ Account created successfully!", 
+        description: "Welcome to Voice Mate!"
+      });
       onAuthSuccess(data.user);
       setIsOpen(false);
+      signUpForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Sign up failed", 
+        title: "❌ Sign up failed", 
         description: error.message || "Please try again",
         variant: "destructive" 
       });
@@ -76,14 +85,18 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Signed in successfully!" });
+      toast({ 
+        title: "✓ Signed in successfully!", 
+        description: `Welcome back, ${data.user.username}!`
+      });
       onAuthSuccess(data.user);
       setIsOpen(false);
+      signInForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Sign in failed", 
+        title: "❌ Sign in failed", 
         description: error.message || "Invalid username or password",
         variant: "destructive" 
       });
@@ -97,15 +110,16 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Password reset successful!", 
-        description: `Your new password is: ${data.newPassword}`,
+        title: "✓ Password reset successful!", 
+        description: `Your temporary password has been sent to your email`,
       });
       setShowForgotPassword(false);
       setActiveTab("signin");
+      forgotPasswordForm.reset();
     },
     onError: (error: any) => {
       toast({ 
-        title: "Password reset failed", 
+        title: "❌ Password reset failed", 
         description: error.message || "User not found with provided details",
         variant: "destructive" 
       });
@@ -137,14 +151,20 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
       </DialogTrigger>
       <DialogContent className="border-2 border-border max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center">
-            {showForgotPassword ? "Reset Password" : "Welcome to Voice Mate"}
+          <DialogTitle className="text-center text-lg">
+            {showForgotPassword ? "Reset Your Password" : "Welcome to Voice Mate"}
           </DialogTitle>
         </DialogHeader>
 
         {showForgotPassword ? (
           <Form {...forgotPasswordForm}>
             <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)} className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-700">
+                  Enter your username and email to reset your password
+                </p>
+              </div>
+
               <FormField
                 control={forgotPasswordForm.control}
                 name="username"
@@ -152,7 +172,11 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your username" {...field} />
+                      <Input 
+                        placeholder="Enter your username" 
+                        {...field}
+                        disabled={forgotPasswordMutation.isPending}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -166,17 +190,22 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="Enter your email" {...field} />
+                      <Input 
+                        type="email" 
+                        placeholder="Enter your email" 
+                        {...field}
+                        disabled={forgotPasswordMutation.isPending}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 pt-2">
                 <Button
                   type="submit"
-                  disabled={forgotPasswordMutation.isPending}
+                  disabled={forgotPasswordMutation.isPending || !forgotPasswordForm.formState.isValid}
                   className="flex-1"
                 >
                   {forgotPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
@@ -187,7 +216,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                   onClick={() => setShowForgotPassword(false)}
                   className="flex-1"
                 >
-                  Back to Sign In
+                  Back
                 </Button>
               </div>
             </form>
@@ -199,6 +228,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
+            {/* Sign In Tab */}
             <TabsContent value="signin" className="space-y-4">
               <Form {...signInForm}>
                 <form onSubmit={signInForm.handleSubmit(onSignIn)} className="space-y-4">
@@ -209,7 +239,12 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                       <FormItem>
                         <FormLabel>Username</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your username" {...field} />
+                          <Input 
+                            placeholder="Enter your username" 
+                            {...field}
+                            disabled={signInMutation.isPending}
+                            autoComplete="username"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -223,7 +258,26 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Enter your password" {...field} />
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"} 
+                              placeholder="Enter your password" 
+                              {...field}
+                              disabled={signInMutation.isPending}
+                              autoComplete="current-password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <Eye className="w-4 h-4 text-gray-500" />
+                              )}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -232,7 +286,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
 
                   <Button
                     type="submit"
-                    disabled={signInMutation.isPending}
+                    disabled={signInMutation.isPending || !signInForm.formState.isValid}
                     className="w-full"
                   >
                     {signInMutation.isPending ? "Signing in..." : "Sign In"}
@@ -250,6 +304,7 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
               </Form>
             </TabsContent>
             
+            {/* Sign Up Tab */}
             <TabsContent value="signup" className="space-y-4">
               <Form {...signUpForm}>
                 <form onSubmit={signUpForm.handleSubmit(onSignUp)} className="space-y-4">
@@ -260,7 +315,12 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                       <FormItem>
                         <FormLabel>Username</FormLabel>
                         <FormControl>
-                          <Input placeholder="Choose a username" {...field} />
+                          <Input 
+                            placeholder="Choose a username (3-20 chars)" 
+                            {...field}
+                            disabled={signUpMutation.isPending}
+                            autoComplete="username"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -274,7 +334,13 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="Enter your email" {...field} />
+                          <Input 
+                            type="email" 
+                            placeholder="your@email.com" 
+                            {...field}
+                            disabled={signUpMutation.isPending}
+                            autoComplete="email"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -288,7 +354,26 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Choose a password" {...field} />
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"} 
+                              placeholder="Create a password (min 8 chars)" 
+                              {...field}
+                              disabled={signUpMutation.isPending}
+                              autoComplete="new-password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <Eye className="w-4 h-4 text-gray-500" />
+                              )}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -302,16 +387,54 @@ export default function AuthDialog({ onAuthSuccess }: AuthDialogProps) {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Confirm your password" {...field} />
+                          <div className="relative">
+                            <Input 
+                              type={showConfirmPassword ? "text" : "password"} 
+                              placeholder="Confirm your password" 
+                              {...field}
+                              disabled={signUpMutation.isPending}
+                              autoComplete="new-password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <Eye className="w-4 h-4 text-gray-500" />
+                              )}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
+                  {/* Password requirements indicator */}
+                  {signUpForm.watch("password") && (
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">Password Requirements:</p>
+                      <div className={`text-xs flex items-center gap-2 ${signUpForm.watch("password").length >= 8 ? "text-green-600" : "text-gray-400"}`}>
+                        {signUpForm.watch("password").length >= 8 ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                        At least 8 characters
+                      </div>
+                      <div className={`text-xs flex items-center gap-2 ${/[A-Z]/.test(signUpForm.watch("password")) ? "text-green-600" : "text-gray-400"}`}>
+                        {/[A-Z]/.test(signUpForm.watch("password")) ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                        One uppercase letter
+                      </div>
+                      <div className={`text-xs flex items-center gap-2 ${/[0-9]/.test(signUpForm.watch("password")) ? "text-green-600" : "text-gray-400"}`}>
+                        {/[0-9]/.test(signUpForm.watch("password")) ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                        One number
+                      </div>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
-                    disabled={signUpMutation.isPending}
+                    disabled={signUpMutation.isPending || !signUpForm.formState.isValid}
                     className="w-full"
                   >
                     {signUpMutation.isPending ? "Creating account..." : "Sign Up"}
