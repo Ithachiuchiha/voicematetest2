@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 
 interface User {
-  id: number;
+  id: string;        // ← was number, now UUID string
   username: string;
   email?: string;
 }
@@ -26,11 +26,7 @@ export function useAuth() {
   return context;
 }
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const queryClient = useQueryClient();
 
@@ -38,17 +34,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-        if (response.status === 401) {
-          return null;
-        }
-        if (!response.ok) {
-          throw new Error('Failed to fetch user');
-        }
+        const response = await fetch("/api/auth/me", { credentials: "include" });
+        if (response.status === 401) return null;
+        if (!response.ok) throw new Error('Failed to fetch user');
         return response.json();
-      } catch (error) {
+      } catch {
         return null;
       }
     },
@@ -71,25 +61,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     onSuccess: () => {
       setUser(null);
       queryClient.clear();
-      // Reload the page to clear any cached data
       window.location.reload();
     },
   });
 
-  const signOut = () => {
-    signOutMutation.mutate();
-  };
-
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    signOut,
-    setUser,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!user,
+      isLoading,
+      signOut: () => signOutMutation.mutate(),
+      setUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );
