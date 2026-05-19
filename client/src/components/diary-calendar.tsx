@@ -27,7 +27,7 @@ export default function DiaryCalendar() {
   });
 
   const deleteDiaryMutation = useMutation({
-    mutationFn: async (entryId: number) => {
+    mutationFn: async (entryId: string) => {
       const response = await apiRequest("DELETE", `/api/diary/${entryId}`);
       return response.json();
     },
@@ -178,7 +178,7 @@ export default function DiaryCalendar() {
                 <div key={entry.id} className="bg-muted border-2 border-border rounded-lg p-4">
                   <div className="flex items-start justify-between mb-2">
                     <span className="text-xs text-muted-foreground">
-                      {formatTime(entry.timestamp)}
+                      {formatTime(entry.createdAt)}
                     </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
