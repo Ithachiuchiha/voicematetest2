@@ -4,34 +4,33 @@ import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUserPassword(userId: number, hashedPassword: string): Promise<void>;
+  updateUserPassword(userId: string, hashedPassword: string): Promise<void>;
 
   // Diary operations
-  getDiaryEntriesByDate(userId: number, date: string): Promise<DiaryEntry[]>;
-  createDiaryEntry(userId: number, entry: InsertDiaryEntry): Promise<DiaryEntry>;
-  deleteDiaryEntry(userId: number, id: number): Promise<void>;
+  getDiaryEntriesByDate(userId: string, date: string): Promise<DiaryEntry[]>;
+  createDiaryEntry(userId: string, entry: InsertDiaryEntry): Promise<DiaryEntry>;
+  deleteDiaryEntry(userId: string, id: string): Promise<void>;
 
   // Task operations
-  getAllTasks(userId: number): Promise<Task[]>;
-  createTask(userId: number, task: InsertTask): Promise<Task>;
-  updateTask(userId: number, id: number, updates: Partial<Task>): Promise<Task>;
-  deleteTask(userId: number, id: number): Promise<void>;
+  getAllTasks(userId: string): Promise<Task[]>;
+  createTask(userId: string, task: InsertTask): Promise<Task>;
+  updateTask(userId: string, id: string, updates: Partial<Task>): Promise<Task>;
+  deleteTask(userId: string, id: string): Promise<void>;
 
   // Schedule operations
-  getAllScheduleItems(userId: number): Promise<ScheduleItem[]>;
-  createScheduleItem(userId: number, item: InsertScheduleItem): Promise<ScheduleItem>;
-  updateScheduleItem(userId: number, id: number, updates: Partial<ScheduleItem>): Promise<ScheduleItem>;
-  deleteScheduleItem(userId: number, id: number): Promise<void>;
+  getAllScheduleItems(userId: string): Promise<ScheduleItem[]>;
+  createScheduleItem(userId: string, item: InsertScheduleItem): Promise<ScheduleItem>;
+  updateScheduleItem(userId: string, id: string, updates: Partial<ScheduleItem>): Promise<ScheduleItem>;
+  deleteScheduleItem(userId: string, id: string): Promise<void>;
 }
 
-// Database-backed storage implementation
 export class DatabaseStorage implements IStorage {
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
+
+  async getUser(id: string): Promise<User | undefined> {
     const db = getDb();
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
@@ -51,30 +50,28 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const db = getDb();
-    const [newUser] = await db
-      .insert(users)
-      .values(user)
-      .returning();
+    const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
   }
 
-  async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
+  async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
     const db = getDb();
-    await db
-      .update(users)
-      .set({ password: hashedPassword })
-      .where(eq(users.id, userId));
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, userId));
   }
 
-  // Diary operations
-  async getDiaryEntriesByDate(userId: number, date: string): Promise<DiaryEntry[]> {
+  // ── Diary ──────────────────────────────────────────────────────────────────
+
+  async getDiaryEntriesByDate(userId: string, date: string): Promise<DiaryEntry[]> {
     const db = getDb();
+    // entryDate is a DATE column — compare as string "YYYY-MM-DD"
     const entries = await db.select().from(diaryEntries)
-      .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.date, date)));
-    return entries.sort((a: DiaryEntry, b: DiaryEntry) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.entryDate, date)));
+    return entries.sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
   }
 
-  async createDiaryEntry(userId: number, entry: InsertDiaryEntry): Promise<DiaryEntry> {
+  async createDiaryEntry(userId: string, entry: InsertDiaryEntry): Promise<DiaryEntry> {
     const db = getDb();
     const [newEntry] = await db
       .insert(diaryEntries)
@@ -83,20 +80,23 @@ export class DatabaseStorage implements IStorage {
     return newEntry;
   }
 
-  async deleteDiaryEntry(userId: number, id: number): Promise<void> {
+  async deleteDiaryEntry(userId: string, id: string): Promise<void> {
     const db = getDb();
     await db.delete(diaryEntries)
       .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, userId)));
   }
 
-  // Task operations
-  async getAllTasks(userId: number): Promise<Task[]> {
+  // ── Tasks ──────────────────────────────────────────────────────────────────
+
+  async getAllTasks(userId: string): Promise<Task[]> {
     const db = getDb();
     const allTasks = await db.select().from(tasks).where(eq(tasks.userId, userId));
-    return allTasks.sort((a: Task, b: Task) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return allTasks.sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
   }
 
-  async createTask(userId: number, task: InsertTask): Promise<Task> {
+  async createTask(userId: string, task: InsertTask): Promise<Task> {
     const db = getDb();
     const [newTask] = await db
       .insert(tasks)
@@ -105,7 +105,7 @@ export class DatabaseStorage implements IStorage {
     return newTask;
   }
 
-  async updateTask(userId: number, id: number, updates: Partial<Task>): Promise<Task> {
+  async updateTask(userId: string, id: string, updates: Partial<Task>): Promise<Task> {
     const db = getDb();
     const [updatedTask] = await db
       .update(tasks)
@@ -115,21 +115,20 @@ export class DatabaseStorage implements IStorage {
     return updatedTask;
   }
 
-  async deleteTask(userId: number, id: number): Promise<void> {
+  async deleteTask(userId: string, id: string): Promise<void> {
     const db = getDb();
     await db.delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
   }
 
-  // Schedule operations
-  async getAllScheduleItems(userId: number): Promise<ScheduleItem[]> {
+  // ── Schedule ───────────────────────────────────────────────────────────────
+
+  async getAllScheduleItems(userId: string): Promise<ScheduleItem[]> {
     const db = getDb();
-    const items = await db.select().from(scheduleItems)
-      .where(and(eq(scheduleItems.userId, userId), eq(scheduleItems.isActive, true)));
-    return items;
+    return db.select().from(scheduleItems).where(eq(scheduleItems.userId, userId));
   }
 
-  async createScheduleItem(userId: number, item: InsertScheduleItem): Promise<ScheduleItem> {
+  async createScheduleItem(userId: string, item: InsertScheduleItem): Promise<ScheduleItem> {
     const db = getDb();
     const [newItem] = await db
       .insert(scheduleItems)
@@ -138,7 +137,7 @@ export class DatabaseStorage implements IStorage {
     return newItem;
   }
 
-  async updateScheduleItem(userId: number, id: number, updates: Partial<ScheduleItem>): Promise<ScheduleItem> {
+  async updateScheduleItem(userId: string, id: string, updates: Partial<ScheduleItem>): Promise<ScheduleItem> {
     const db = getDb();
     const [updatedItem] = await db
       .update(scheduleItems)
@@ -148,7 +147,7 @@ export class DatabaseStorage implements IStorage {
     return updatedItem;
   }
 
-  async deleteScheduleItem(userId: number, id: number): Promise<void> {
+  async deleteScheduleItem(userId: string, id: string): Promise<void> {
     const db = getDb();
     await db.delete(scheduleItems)
       .where(and(eq(scheduleItems.id, id), eq(scheduleItems.userId, userId)));
