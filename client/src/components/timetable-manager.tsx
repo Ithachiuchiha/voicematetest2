@@ -41,7 +41,7 @@ export default function TimetableManager() {
   });
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<ScheduleItem> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<ScheduleItem> }) => {
       const response = await apiRequest("PATCH", `/api/schedule/${id}`, updates);
       return response.json();
     },
@@ -55,7 +55,7 @@ export default function TimetableManager() {
   });
 
   const deleteScheduleMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       const response = await apiRequest("DELETE", `/api/schedule/${id}`);
       return response.json();
     },
@@ -85,14 +85,14 @@ defaultValues: {
     createScheduleMutation.mutate(values);
   };
 
-  const toggleActiveStatus = (itemId: number, isActive: boolean) => {
+  const toggleActiveStatus = (itemId: string, isActive: boolean) => {
     updateScheduleMutation.mutate({
       id: itemId,
       updates: { isActive },
     });
   };
 
-  const handleDeleteItem = (itemId: number) => {
+  const handleDeleteItem = (itemId: string) => {
     if (window.confirm('Are you sure you want to delete this schedule item?')) {
       deleteScheduleMutation.mutate(itemId);
     }
@@ -108,10 +108,11 @@ defaultValues: {
 
   const getRepeatLabel = (pattern: string) => {
     switch (pattern) {
-      case 'daily': return 'Daily';
-      case 'weekdays': return 'Mon-Fri';
-      case 'weekends': return 'Weekends';
-      default: return pattern;
+         case 'none': return 'No repeat';
+         case 'daily': return 'Daily';
+         case 'weekly': return 'Weekly';
+         case 'monthly': return 'Monthly';
+         default: return pattern;
     }
   };
 
@@ -198,9 +199,10 @@ defaultValues: {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="daily">Daily</SelectItem>
-                                <SelectItem value="weekdays">Weekdays</SelectItem>
-                                <SelectItem value="weekends">Weekends</SelectItem>
+                                   <SelectItem value="none">No repeat</SelectItem>
+                                   <SelectItem value="daily">Daily</SelectItem>
+                                   <SelectItem value="weekly">Weekly</SelectItem>
+                                   <SelectItem value="monthly">Monthly</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -261,7 +263,7 @@ defaultValues: {
                         style={{ backgroundColor: item.color }}
                       ></div>
                       <span className="font-medium text-foreground text-sm">
-                        {formatTime(item.time)}
+                        {formatTime(item.scheduledTime)}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -297,7 +299,7 @@ defaultValues: {
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-muted-foreground">Repeat:</span>
                     <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
-                      {getRepeatLabel(item.repeatPattern)}
+                      {getRepeatLabel(item.repeatType)}
                     </span>
                   </div>
                 </div>
