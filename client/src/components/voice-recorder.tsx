@@ -123,7 +123,7 @@ export default function VoiceRecorder() {
         // Create diary entry
         const entry: InsertDiaryEntry = {
           content: text,
-          date: new Date().toISOString().split('T')[0],
+          entryDate: new Date().toISOString().split('T')[0],
         };
         await saveDiaryMutation.mutateAsync(entry);
         toast({ 
