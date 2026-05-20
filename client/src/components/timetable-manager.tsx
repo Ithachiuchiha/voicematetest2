@@ -70,14 +70,15 @@ export default function TimetableManager() {
 
   const form = useForm<InsertScheduleItem>({
     resolver: zodResolver(insertScheduleItemSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      time: "09:00",
-      repeatPattern: "daily",
-      isActive: true,
-      color: "#FF69B4",
-    },
+   // AFTER (Corrected)
+defaultValues: {
+ title: "",
+ description: "",
+ scheduledTime: "09:00", 
+ repeatType: "none", 
+ isActive: true,
+ color: "#FF69B4",
+},
   });
 
   const onSubmit = (values: InsertScheduleItem) => {
@@ -172,7 +173,7 @@ export default function TimetableManager() {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="time"
+                        name="scheduledTime"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Time</FormLabel>
@@ -186,7 +187,7 @@ export default function TimetableManager() {
 
                       <FormField
                         control={form.control}
-                        name="repeatPattern"
+                        name="repeatType"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Repeat</FormLabel>
