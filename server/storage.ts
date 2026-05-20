@@ -1,70 +1,72 @@
-import { users, diaryEntries, tasks, scheduleItems, type User, type InsertUser, type DiaryEntry, type InsertDiaryEntry, type Task, type InsertTask, type ScheduleItem, type InsertScheduleItem } from "@shared/schema";
+import {
+  profiles, diaryEntries, tasks, scheduleItems, notifications,
+  type Profile, type InsertProfile,
+  type DiaryEntry, type InsertDiaryEntry,
+  type Task, type InsertTask,
+  type ScheduleItem, type InsertScheduleItem,
+  type Notification, type InsertNotification,
+} from "@shared/schema";
 import { getDb } from "./db";
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUserPassword(userId: string, hashedPassword: string): Promise<void>;
+  // Profile operations (replaces user operations — auth is handled by Supabase)
+  getProfile(id: string): Promise<Profile | undefined>;
+  getProfileByUsername(username: string): Promise<Profile | undefined>;
+  getProfileByEmail(email: string): Promise<Profile | undefined>;
+  createProfile(profile: InsertProfile): Promise<Profile>;
 
-  // Diary operations
+  // Diary
   getDiaryEntriesByDate(userId: string, date: string): Promise<DiaryEntry[]>;
   createDiaryEntry(userId: string, entry: InsertDiaryEntry): Promise<DiaryEntry>;
   deleteDiaryEntry(userId: string, id: string): Promise<void>;
 
-  // Task operations
+  // Tasks
   getAllTasks(userId: string): Promise<Task[]>;
   createTask(userId: string, task: InsertTask): Promise<Task>;
   updateTask(userId: string, id: string, updates: Partial<Task>): Promise<Task>;
   deleteTask(userId: string, id: string): Promise<void>;
 
-  // Schedule operations
+  // Schedule
   getAllScheduleItems(userId: string): Promise<ScheduleItem[]>;
   createScheduleItem(userId: string, item: InsertScheduleItem): Promise<ScheduleItem>;
   updateScheduleItem(userId: string, id: string, updates: Partial<ScheduleItem>): Promise<ScheduleItem>;
   deleteScheduleItem(userId: string, id: string): Promise<void>;
+
+  // Notifications
+  getUnreadNotifications(userId: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationRead(userId: string, id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
 
-  async getUser(id: string): Promise<User | undefined> {
-    const db = getDb();
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+  // ── Profiles ───────────────────────────────────────────────────────────────
+
+  async getProfile(id: string): Promise<Profile | undefined> {
+    const [p] = await getDb().select().from(profiles).where(eq(profiles.id, id));
+    return p;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const db = getDb();
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+  async getProfileByUsername(username: string): Promise<Profile | undefined> {
+    const [p] = await getDb().select().from(profiles).where(eq(profiles.username, username));
+    return p;
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const db = getDb();
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+  async getProfileByEmail(email: string): Promise<Profile | undefined> {
+    const [p] = await getDb().select().from(profiles).where(eq(profiles.email, email));
+    return p;
   }
 
-  async createUser(user: InsertUser): Promise<User> {
-    const db = getDb();
-    const [newUser] = await db.insert(users).values(user).returning();
-    return newUser;
-  }
-
-  async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
-    const db = getDb();
-    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, userId));
+  async createProfile(profile: InsertProfile): Promise<Profile> {
+    const [p] = await getDb().insert(profiles).values(profile).returning();
+    return p;
   }
 
   // ── Diary ──────────────────────────────────────────────────────────────────
 
   async getDiaryEntriesByDate(userId: string, date: string): Promise<DiaryEntry[]> {
-    const db = getDb();
-    // entryDate is a DATE column — compare as string "YYYY-MM-DD"
-    const entries = await db.select().from(diaryEntries)
+    const entries = await getDb().select().from(diaryEntries)
       .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.entryDate, date)));
     return entries.sort((a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -72,85 +74,85 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDiaryEntry(userId: string, entry: InsertDiaryEntry): Promise<DiaryEntry> {
-    const db = getDb();
-    const [newEntry] = await db
-      .insert(diaryEntries)
-      .values({ ...entry, userId })
+    const wordCount = entry.content.trim().split(/\s+/).filter(Boolean).length;
+    const [e] = await getDb().insert(diaryEntries)
+      .values({ ...entry, userId, wordCount })
       .returning();
-    return newEntry;
+    return e;
   }
 
   async deleteDiaryEntry(userId: string, id: string): Promise<void> {
-    const db = getDb();
-    await db.delete(diaryEntries)
+    await getDb().delete(diaryEntries)
       .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, userId)));
   }
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
 
   async getAllTasks(userId: string): Promise<Task[]> {
-    const db = getDb();
-    const allTasks = await db.select().from(tasks).where(eq(tasks.userId, userId));
-    return allTasks.sort((a, b) =>
+    const all = await getDb().select().from(tasks).where(eq(tasks.userId, userId));
+    return all.sort((a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
   }
 
   async createTask(userId: string, task: InsertTask): Promise<Task> {
-    const db = getDb();
-    const [newTask] = await db
-      .insert(tasks)
-      .values({ ...task, userId })
-      .returning();
-    return newTask;
+    const [t] = await getDb().insert(tasks).values({ ...task, userId }).returning();
+    return t;
   }
 
   async updateTask(userId: string, id: string, updates: Partial<Task>): Promise<Task> {
-    const db = getDb();
-    const [updatedTask] = await db
-      .update(tasks)
-      .set(updates)
+    const [t] = await getDb().update(tasks)
+      .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
       .returning();
-    return updatedTask;
+    return t;
   }
 
   async deleteTask(userId: string, id: string): Promise<void> {
-    const db = getDb();
-    await db.delete(tasks)
+    await getDb().delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
   }
 
   // ── Schedule ───────────────────────────────────────────────────────────────
 
   async getAllScheduleItems(userId: string): Promise<ScheduleItem[]> {
-    const db = getDb();
-    return db.select().from(scheduleItems).where(eq(scheduleItems.userId, userId));
+    return getDb().select().from(scheduleItems).where(eq(scheduleItems.userId, userId));
   }
 
   async createScheduleItem(userId: string, item: InsertScheduleItem): Promise<ScheduleItem> {
-    const db = getDb();
-    const [newItem] = await db
-      .insert(scheduleItems)
-      .values({ ...item, userId })
-      .returning();
-    return newItem;
+    const [s] = await getDb().insert(scheduleItems).values({ ...item, userId }).returning();
+    return s;
   }
 
   async updateScheduleItem(userId: string, id: string, updates: Partial<ScheduleItem>): Promise<ScheduleItem> {
-    const db = getDb();
-    const [updatedItem] = await db
-      .update(scheduleItems)
-      .set(updates)
+    const [s] = await getDb().update(scheduleItems)
+      .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(scheduleItems.id, id), eq(scheduleItems.userId, userId)))
       .returning();
-    return updatedItem;
+    return s;
   }
 
   async deleteScheduleItem(userId: string, id: string): Promise<void> {
-    const db = getDb();
-    await db.delete(scheduleItems)
+    await getDb().delete(scheduleItems)
       .where(and(eq(scheduleItems.id, id), eq(scheduleItems.userId, userId)));
+  }
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+
+  async getUnreadNotifications(userId: string): Promise<Notification[]> {
+    return getDb().select().from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [n] = await getDb().insert(notifications).values(notification).returning();
+    return n;
+  }
+
+  async markNotificationRead(userId: string, id: string): Promise<void> {
+    await getDb().update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
   }
 }
 

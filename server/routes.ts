@@ -1,40 +1,32 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDiaryEntrySchema, insertTaskSchema, insertScheduleItemSchema, signUpSchema, signInSchema, forgotPasswordSchema } from "@shared/schema";
+import { getSupabaseAdmin } from "./db";
+import {
+  insertDiaryEntrySchema, insertTaskSchema, insertScheduleItemSchema,
+  signUpSchema, signInSchema, forgotPasswordSchema,
+} from "@shared/schema";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import {
-  apiLimiter,
-  authLimiter,
-  voiceLimiter,
-  sanitizeInput,
-  validatePasswordStrength,
-  checkAccountLockout,
-  recordFailedAttempt,
-  clearFailedAttempts,
-  logSecurityEvent,
+  apiLimiter, authLimiter, voiceLimiter,
+  sanitizeInput, validatePasswordStrength,
+  checkAccountLockout, recordFailedAttempt, clearFailedAttempts,
   sanitizeError,
-  hashPassword,
-  verifyPassword
 } from "./security";
 
 const SessionStore = MemoryStore(session);
 
-// ── Session type — userId is now a UUID string ────────────────────────────────
 declare module 'express-session' {
   interface SessionData {
-    userId?: string;   // ← was number, now UUID string
+    userId?: string;    // auth.users UUID (= profiles.id)
     username?: string;
   }
 }
 
 const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+  if (!req.session?.userId) return res.status(401).json({ error: 'Authentication required' });
   next();
 };
 
@@ -48,93 +40,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: 'strict'
-    }
+      sameSite: 'strict',
+    },
   }));
 
-  // ── Auth routes ─────────────────────────────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────────────────────────
 
   app.post("/api/auth/signup", authLimiter, async (req, res) => {
     try {
       const data = signUpSchema.parse(req.body);
-      const sanitizedUsername = sanitizeInput(data.username);
-      const sanitizedEmail = sanitizeInput(data.email);
+      const username = sanitizeInput(data.username);
+      const email = sanitizeInput(data.email).toLowerCase();
 
-      const passwordStrength = validatePasswordStrength(data.password);
-      if (!passwordStrength.isValid) {
-        return res.status(400).json({ error: "Password does not meet security requirements", feedback: passwordStrength.feedback });
+      const pwCheck = validatePasswordStrength(data.password);
+      if (!pwCheck.isValid) {
+        return res.status(400).json({ error: "Weak password", feedback: pwCheck.feedback });
       }
 
-      const existingUser = await storage.getUserByUsername(sanitizedUsername);
-      if (existingUser) return res.status(400).json({ error: "Username already exists" });
+      // Check username/email uniqueness before touching Supabase Auth
+      const [existingUser, existingEmail] = await Promise.all([
+        storage.getProfileByUsername(username),
+        storage.getProfileByEmail(email),
+      ]);
+      if (existingUser) return res.status(400).json({ error: "Username already taken" });
+      if (existingEmail) return res.status(400).json({ error: "Email already registered" });
 
-      const existingEmail = await storage.getUserByEmail(sanitizedEmail);
-      if (existingEmail) return res.status(400).json({ error: "Email already exists" });
+      // Create user in Supabase Auth (this populates auth.users)
+      const supabase = getSupabaseAdmin();
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password: data.password,
+        email_confirm: true,   // skip email verification — change to false if you want confirmation
+      });
+      if (authError) {
+        console.error('[AUTH] Supabase createUser error:', authError);
+        return res.status(400).json({ error: authError.message });
+      }
 
-      const hashedPassword = await hashPassword(data.password);
-      const user = await storage.createUser({ username: sanitizedUsername, email: sanitizedEmail, password: hashedPassword });
+      // Mirror into public.profiles (same UUID)
+      const profile = await storage.createProfile({
+        id: authData.user.id,
+        username,
+        email,
+      });
 
-      req.session.userId = user.id;       // ← UUID string
-      req.session.username = user.username;
+      req.session.userId = profile.id;
+      req.session.username = profile.username;
 
-      res.json({ user: { id: user.id, username: user.username, email: user.email } });
+      res.json({ user: { id: profile.id, username: profile.username, email: profile.email } });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid input data", details: error.errors });
-      } else {
-        res.status(500).json(sanitizeError(error));
-      }
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+      res.status(500).json(sanitizeError(error));
     }
   });
 
   app.post("/api/auth/signin", authLimiter, async (req, res) => {
     try {
       const data = signInSchema.parse(req.body);
-      const sanitizedUsername = sanitizeInput(data.username);
+      const username = sanitizeInput(data.username);
 
-      if (checkAccountLockout(sanitizedUsername)) {
-        return res.status(423).json({ error: "Account temporarily locked due to multiple failed attempts" });
+      if (checkAccountLockout(username)) {
+        return res.status(423).json({ error: "Account temporarily locked — too many failed attempts" });
       }
 
-      const user = await storage.getUserByUsername(sanitizedUsername);
-      if (!user) {
-        recordFailedAttempt(sanitizedUsername);
+      // Lookup email via profiles (username → email)
+      const profile = await storage.getProfileByUsername(username);
+      if (!profile) {
+        recordFailedAttempt(username);
         return res.status(401).json({ error: "Invalid username or password" });
       }
 
-      const isValid = await verifyPassword(data.password, user.password);
-      if (!isValid) {
-        recordFailedAttempt(sanitizedUsername);
+      // Validate credentials via Supabase Auth
+      const supabase = getSupabaseAdmin();
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: data.password,
+      });
+      if (authError || !authData.user) {
+        recordFailedAttempt(username);
         return res.status(401).json({ error: "Invalid username or password" });
       }
 
-      clearFailedAttempts(sanitizedUsername);
-      req.session.userId = user.id;       // ← UUID string
-      req.session.username = user.username;
+      clearFailedAttempts(username);
+      req.session.userId = profile.id;
+      req.session.username = profile.username;
 
-      res.json({ user: { id: user.id, username: user.username, email: user.email } });
+      res.json({ user: { id: profile.id, username: profile.username, email: profile.email } });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid input data", details: error.errors });
-      } else {
-        res.status(500).json(sanitizeError(error));
-      }
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+      res.status(500).json(sanitizeError(error));
     }
   });
 
-  app.post("/api/auth/forgot-password", async (req, res) => {
+  // Sends a Supabase password-reset email — no weak temp passwords
+  app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
     try {
       const data = forgotPasswordSchema.parse(req.body);
-      const user = await storage.getUserByUsername(data.username);
-      if (!user || user.email !== data.email) {
-        return res.status(404).json({ error: "User not found with provided username and email" });
-      }
-      const newPassword = `${data.username}@${data.email.substring(0, 2)}`;
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUserPassword(user.id, hashedPassword);
-      res.json({ message: "Password reset successful", newPassword });
+      const supabase = getSupabaseAdmin();
+      // Fire-and-forget: always return success to avoid email enumeration
+      await supabase.auth.resetPasswordForEmail(data.email.toLowerCase());
+      res.json({ message: "If that email is registered, a reset link has been sent." });
     } catch (error) {
-      res.status(500).json({ error: "Failed to reset password" });
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+      res.status(500).json({ error: "Failed to send reset email" });
     }
   });
 
@@ -145,156 +153,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     if (!req.session?.userId) return res.status(401).json({ error: "Not authenticated" });
-    res.json({ user: { id: req.session.userId, username: req.session.username } });
+    // Return fresh profile data (username may have been updated)
+    const profile = await storage.getProfile(req.session.userId);
+    if (!profile) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ error: "Profile not found" });
+    }
+    res.json({ user: { id: profile.id, username: profile.username, email: profile.email } });
   });
 
   app.use("/api", apiLimiter);
 
-  // ── Diary routes ────────────────────────────────────────────────────────────
+  // ── Diary ─────────────────────────────────────────────────────────────────
 
   app.get("/api/diary/:date", requireAuth, async (req, res) => {
     try {
-      const { date } = req.params;
-      const userId = req.session.userId!;
-      const entries = await storage.getDiaryEntriesByDate(userId, date);
+      const entries = await storage.getDiaryEntriesByDate(req.session.userId!, req.params.date);
       res.json(entries);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch diary entries" });
-    }
+    } catch { res.status(500).json({ error: "Failed to fetch diary entries" }); }
   });
 
   app.post("/api/diary", requireAuth, voiceLimiter, async (req, res) => {
     try {
       const entry = insertDiaryEntrySchema.parse(req.body);
-      const sanitizedEntry = { ...entry, content: sanitizeInput(entry.content) };
-      const userId = req.session.userId!;
-      const newEntry = await storage.createDiaryEntry(userId, sanitizedEntry);
-      res.json(newEntry);
+      const sanitized = { ...entry, content: sanitizeInput(entry.content) };
+      res.json(await storage.createDiaryEntry(req.session.userId!, sanitized));
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid entry data", details: error.errors });
-      } else {
-        res.status(500).json(sanitizeError(error));
-      }
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid entry data", details: error.errors });
+      res.status(500).json(sanitizeError(error));
     }
   });
 
   app.delete("/api/diary/:id", requireAuth, async (req, res) => {
     try {
-      const id = req.params.id;          // ← was parseInt, now plain string UUID
-      const userId = req.session.userId!;
-      await storage.deleteDiaryEntry(userId, id);
+      await storage.deleteDiaryEntry(req.session.userId!, req.params.id);
       res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete diary entry" });
-    }
+    } catch { res.status(500).json({ error: "Failed to delete diary entry" }); }
   });
 
-  // ── Task routes ─────────────────────────────────────────────────────────────
+  // ── Tasks ─────────────────────────────────────────────────────────────────
 
   app.get("/api/tasks", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const tasks = await storage.getAllTasks(userId);
-      res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch tasks" });
-    }
+      res.json(await storage.getAllTasks(req.session.userId!));
+    } catch { res.status(500).json({ error: "Failed to fetch tasks" }); }
   });
 
   app.post("/api/tasks", requireAuth, voiceLimiter, async (req, res) => {
     try {
       const task = insertTaskSchema.parse(req.body);
-      const sanitizedTask = {
+      const sanitized = {
         ...task,
         title: sanitizeInput(task.title),
-        description: task.description ? sanitizeInput(task.description) : undefined
+        description: task.description ? sanitizeInput(task.description) : undefined,
       };
-      const userId = req.session.userId!;
-      const newTask = await storage.createTask(userId, sanitizedTask);
-      res.json(newTask);
+      res.json(await storage.createTask(req.session.userId!, sanitized));
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid task data", details: error.errors });
-      } else {
-        res.status(500).json(sanitizeError(error));
-      }
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid task data", details: error.errors });
+      res.status(500).json(sanitizeError(error));
     }
   });
 
   app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
-      const id = req.params.id;          // ← was parseInt, now plain string UUID
-      const userId = req.session.userId!;
-      const updatedTask = await storage.updateTask(userId, id, req.body);
-      res.json(updatedTask);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update task" });
-    }
+      res.json(await storage.updateTask(req.session.userId!, req.params.id, req.body));
+    } catch { res.status(500).json({ error: "Failed to update task" }); }
   });
 
   app.delete("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
-      const id = req.params.id;          // ← was parseInt, now plain string UUID
-      const userId = req.session.userId!;
-      await storage.deleteTask(userId, id);
+      await storage.deleteTask(req.session.userId!, req.params.id);
       res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete task" });
-    }
+    } catch { res.status(500).json({ error: "Failed to delete task" }); }
   });
 
-  // ── Schedule routes ─────────────────────────────────────────────────────────
+  // ── Schedule ──────────────────────────────────────────────────────────────
 
   app.get("/api/schedule", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const items = await storage.getAllScheduleItems(userId);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch schedule items" });
-    }
+      res.json(await storage.getAllScheduleItems(req.session.userId!));
+    } catch { res.status(500).json({ error: "Failed to fetch schedule items" }); }
   });
 
   app.post("/api/schedule", requireAuth, async (req, res) => {
     try {
       const item = insertScheduleItemSchema.parse(req.body);
-      const userId = req.session.userId!;
-      const newItem = await storage.createScheduleItem(userId, item);
-      res.json(newItem);
+      res.json(await storage.createScheduleItem(req.session.userId!, item));
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid schedule item data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to create schedule item" });
-      }
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid schedule item", details: error.errors });
+      res.status(500).json({ error: "Failed to create schedule item" });
     }
   });
 
   app.patch("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
-      const id = req.params.id;          // ← was parseInt, now plain string UUID
-      const userId = req.session.userId!;
-      const updatedItem = await storage.updateScheduleItem(userId, id, req.body);
-      res.json(updatedItem);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update schedule item" });
-    }
+      res.json(await storage.updateScheduleItem(req.session.userId!, req.params.id, req.body));
+    } catch { res.status(500).json({ error: "Failed to update schedule item" }); }
   });
 
   app.delete("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
-      const id = req.params.id;          // ← was parseInt, now plain string UUID
-      const userId = req.session.userId!;
-      await storage.deleteScheduleItem(userId, id);
+      await storage.deleteScheduleItem(req.session.userId!, req.params.id);
       res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete schedule item" });
-    }
+    } catch { res.status(500).json({ error: "Failed to delete schedule item" }); }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  // ── Notifications ─────────────────────────────────────────────────────────
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      res.json(await storage.getUnreadNotifications(req.session.userId!));
+    } catch { res.status(500).json({ error: "Failed to fetch notifications" }); }
+  });
+
+  app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markNotificationRead(req.session.userId!, req.params.id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Failed to mark notification" }); }
+  });
+
+  return createServer(app);
 }
